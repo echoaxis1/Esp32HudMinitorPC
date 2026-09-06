@@ -8,6 +8,7 @@ import time
 import json
 import shutil
 import subprocess
+import socket
 import psutil
 import serial
 import serial.tools.list_ports
@@ -201,14 +202,36 @@ def main():
                 disk_pct = round(disk.used / disk.total * 100, 1)
                 disk_free_gb = round(disk.free / (1024**3), 1)
 
-                # 4. Network Rate
+                # 4. Network Rate & Cumulative Stats
                 now = time.time()
                 dt = now - last_time if (now - last_time) > 0 else 1.0
                 curr_net = psutil.net_io_counters()
                 net_down_kb = round((curr_net.bytes_recv - last_net.bytes_recv) / 1024.0 / dt, 1)
                 net_up_kb = round((curr_net.bytes_sent - last_net.bytes_sent) / 1024.0 / dt, 1)
+                rx_total_gb = round(curr_net.bytes_recv / (1024**3), 2)
+                tx_total_gb = round(curr_net.bytes_sent / (1024**3), 2)
                 last_net = curr_net
                 last_time = now
+
+                # 4.1 Local IP & Active Interface
+                local_ip = "127.0.0.1"
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(('8.8.8.8', 80))
+                    local_ip = s.getsockname()[0]
+                    s.close()
+                except Exception:
+                    pass
+
+                active_iface = "en1"
+                try:
+                    net_pernic = psutil.net_io_counters(pernic=True)
+                    for iface, stats in net_pernic.items():
+                        if (iface.startswith('en') or iface.startswith('ap')) and stats.bytes_recv > 1024*1024:
+                            active_iface = iface
+                            break
+                except Exception:
+                    pass
 
                 # 5. Uptime
                 uptime = get_uptime()
@@ -217,7 +240,7 @@ def main():
                 top_procs = get_top_processes(limit=6)
 
                 # 7. Top Network Connections
-                top_conns = get_network_connections(limit=6)
+                top_conns = get_network_connections(limit=3)
 
                 payload = {
                     "cpu": round(cpu_pct, 1),
@@ -230,6 +253,10 @@ def main():
                     "disk_free": disk_free_gb,
                     "net_down": net_down_kb,
                     "net_up": net_up_kb,
+                    "rx_gb": rx_total_gb,
+                    "tx_gb": tx_total_gb,
+                    "iface": active_iface,
+                    "ip": local_ip,
                     "chip": chip_name,
                     "uptime": uptime,
                     "procs": top_procs,

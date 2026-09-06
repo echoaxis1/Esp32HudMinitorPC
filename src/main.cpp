@@ -28,6 +28,22 @@ void processMacMetricsJson(const char *jsonStr) {
     latestMetrics.disk_free_gb  = doc["disk_free"].as<float>();
     latestMetrics.net_up_kb     = doc["net_up"].as<float>();
     latestMetrics.net_down_kb   = doc["net_down"].as<float>();
+    latestMetrics.net_total_rx_gb = doc["rx_gb"].is<float>() ? doc["rx_gb"].as<float>() : 0.0f;
+    latestMetrics.net_total_tx_gb = doc["tx_gb"].is<float>() ? doc["tx_gb"].as<float>() : 0.0f;
+    latestMetrics.net_interface[0] = '\0';
+    if (doc["iface"].is<const char*>()) {
+        strncpy(latestMetrics.net_interface, doc["iface"].as<const char*>(), sizeof(latestMetrics.net_interface) - 1);
+        latestMetrics.net_interface[sizeof(latestMetrics.net_interface) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.net_interface, "en1");
+    }
+    latestMetrics.net_local_ip[0] = '\0';
+    if (doc["ip"].is<const char*>()) {
+        strncpy(latestMetrics.net_local_ip, doc["ip"].as<const char*>(), sizeof(latestMetrics.net_local_ip) - 1);
+        latestMetrics.net_local_ip[sizeof(latestMetrics.net_local_ip) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.net_local_ip, "127.0.0.1");
+    }
     latestMetrics.chip_name[0] = '\0';
     if (doc["chip"].is<const char*>()) {
         strncpy(latestMetrics.chip_name, doc["chip"].as<const char*>(), sizeof(latestMetrics.chip_name) - 1);

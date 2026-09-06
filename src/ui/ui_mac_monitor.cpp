@@ -60,6 +60,13 @@ static lv_obj_t *lbl_proc_cpus[MAX_TOP_PROCESSES];
 static lv_obj_t *lbl_proc_rams[MAX_TOP_PROCESSES];
 
 // Network Screen Widgets
+static lv_obj_t *lbl_net_rx_rate = nullptr;
+static lv_obj_t *bar_net_rx = nullptr;
+static lv_obj_t *lbl_net_rx_total = nullptr;
+static lv_obj_t *lbl_net_tx_rate = nullptr;
+static lv_obj_t *bar_net_tx = nullptr;
+static lv_obj_t *lbl_net_tx_total = nullptr;
+static lv_obj_t *lbl_net_iface_info = nullptr;
 static lv_obj_t *lbl_net_pnames[MAX_TOP_NET_CONNS];
 static lv_obj_t *lbl_net_pids[MAX_TOP_NET_CONNS];
 static lv_obj_t *lbl_net_remotes[MAX_TOP_NET_CONNS];
@@ -484,7 +491,7 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     }
 
     // =========================================================================
-    // 3. ACTIVE NETWORK CONNECTIONS CONTAINER (SCREEN 3)
+    // 3. NETWORK SPEED & INTERFACE MONITOR CONTAINER (SCREEN 3)
     // =========================================================================
     scr_networks = lv_obj_create(parent);
     lv_obj_set_size(scr_networks, 800, 480);
@@ -522,85 +529,149 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_align(lbl_n_back, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_t *lbl_n_title = lv_label_create(n_header);
-    lv_label_set_text(lbl_n_title, "ACTIVE NETWORK CONNECTIONS (SOCKET MONITOR)");
+    lv_label_set_text(lbl_n_title, "NETWORK TRAFFIC & INTERFACE MONITOR (TX / RX)");
     lv_obj_set_style_text_color(lbl_n_title, COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_text_font(lbl_n_title, &lv_font_montserrat_16, 0);
     lv_obj_align(lbl_n_title, LV_ALIGN_CENTER, 30, 0);
 
-    // 3.2 TABLE COLUMN HEADER
+    // 3.2 TOP PERFORMANCE CARDS (RX & TX)
+    // Left: RX (Download) Card
+    lv_obj_t *card_rx = create_card(scr_networks, 12, 66, 380, 140);
+    lv_obj_t *t_rx = lv_label_create(card_rx);
+    lv_label_set_text(t_rx, "DOWNLOAD RATE (RX SPEED)");
+    lv_obj_set_style_text_color(t_rx, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(t_rx, &lv_font_montserrat_14, 0);
+    lv_obj_align(t_rx, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    lbl_net_rx_rate = lv_label_create(card_rx);
+    lv_label_set_text(lbl_net_rx_rate, "0.0 KB/s");
+    lv_obj_set_style_text_color(lbl_net_rx_rate, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_net_rx_rate, &lv_font_montserrat_24, 0);
+    lv_obj_set_pos(lbl_net_rx_rate, 0, 26);
+
+    bar_net_rx = lv_bar_create(card_rx);
+    lv_obj_set_size(bar_net_rx, 340, 12);
+    lv_obj_set_pos(bar_net_rx, 0, 64);
+    lv_bar_set_range(bar_net_rx, 0, 20480);
+    lv_obj_set_style_bg_color(bar_net_rx, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_net_rx, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_net_rx, 6, 0);
+
+    lbl_net_rx_total = lv_label_create(card_rx);
+    lv_label_set_text(lbl_net_rx_total, "Session RX Total: 0.00 GB");
+    lv_obj_set_style_text_color(lbl_net_rx_total, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_net_rx_total, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_net_rx_total, 0, 86);
+
+    // Right: TX (Upload) Card
+    lv_obj_t *card_tx = create_card(scr_networks, 408, 66, 380, 140);
+    lv_obj_t *t_tx = lv_label_create(card_tx);
+    lv_label_set_text(t_tx, "UPLOAD RATE (TX SPEED)");
+    lv_obj_set_style_text_color(t_tx, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(t_tx, &lv_font_montserrat_14, 0);
+    lv_obj_align(t_tx, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    lbl_net_tx_rate = lv_label_create(card_tx);
+    lv_label_set_text(lbl_net_tx_rate, "0.0 KB/s");
+    lv_obj_set_style_text_color(lbl_net_tx_rate, COLOR_ACCENT_PURPLE, 0);
+    lv_obj_set_style_text_font(lbl_net_tx_rate, &lv_font_montserrat_24, 0);
+    lv_obj_set_pos(lbl_net_tx_rate, 0, 26);
+
+    bar_net_tx = lv_bar_create(card_tx);
+    lv_obj_set_size(bar_net_tx, 340, 12);
+    lv_obj_set_pos(bar_net_tx, 0, 64);
+    lv_bar_set_range(bar_net_tx, 0, 10240);
+    lv_obj_set_style_bg_color(bar_net_tx, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_net_tx, COLOR_ACCENT_PURPLE, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_net_tx, 6, 0);
+
+    lbl_net_tx_total = lv_label_create(card_tx);
+    lv_label_set_text(lbl_net_tx_total, "Session TX Total: 0.00 GB");
+    lv_obj_set_style_text_color(lbl_net_tx_total, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_net_tx_total, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_net_tx_total, 0, 86);
+
+    // 3.3 INTERFACE & IP BANNER
+    lv_obj_t *card_iface = create_card(scr_networks, 12, 214, 776, 42);
+    lbl_net_iface_info = lv_label_create(card_iface);
+    lv_label_set_text(lbl_net_iface_info, "ACTIVE INTERFACE: --  |  LOCAL IP: --  |  STATUS: ONLINE");
+    lv_obj_set_style_text_color(lbl_net_iface_info, COLOR_ACCENT_GREEN, 0);
+    lv_obj_set_style_text_font(lbl_net_iface_info, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_net_iface_info, LV_ALIGN_CENTER, 0, 0);
+
+    // 3.4 ACTIVE CONNECTIONS / SOCKETS (TOP 3)
     lv_obj_t *col_n_bar = lv_obj_create(scr_networks);
-    lv_obj_set_pos(col_n_bar, 12, 62);
-    lv_obj_set_size(col_n_bar, 776, 26);
+    lv_obj_set_pos(col_n_bar, 12, 262);
+    lv_obj_set_size(col_n_bar, 776, 24);
     lv_obj_set_style_bg_opa(col_n_bar, LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(col_n_bar, 0, 0);
     lv_obj_set_style_pad_all(col_n_bar, 0, 0);
     lv_obj_clear_flag(col_n_bar, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t *th_n_name = lv_label_create(col_n_bar);
-    lv_label_set_text(th_n_name, "APPLICATION / PROCESS");
+    lv_label_set_text(th_n_name, "APPLICATION");
     lv_obj_set_style_text_color(th_n_name, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(th_n_name, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(th_n_name, 50, 4);
+    lv_obj_set_pos(th_n_name, 50, 2);
 
     lv_obj_t *th_n_pid = lv_label_create(col_n_bar);
     lv_label_set_text(th_n_pid, "PID");
     lv_obj_set_style_text_color(th_n_pid, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(th_n_pid, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(th_n_pid, 240, 4);
+    lv_obj_set_pos(th_n_pid, 240, 2);
 
     lv_obj_t *th_n_remote = lv_label_create(col_n_bar);
     lv_label_set_text(th_n_remote, "REMOTE HOST / IP:PORT");
     lv_obj_set_style_text_color(th_n_remote, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(th_n_remote, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(th_n_remote, 360, 4);
+    lv_obj_set_pos(th_n_remote, 360, 2);
 
     lv_obj_t *th_n_status = lv_label_create(col_n_bar);
     lv_label_set_text(th_n_status, "STATUS");
     lv_obj_set_style_text_color(th_n_status, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(th_n_status, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(th_n_status, 670, 4);
+    lv_obj_set_pos(th_n_status, 670, 2);
 
-    // 3.3 TOP 6 NETWORK CONNECTION ROWS
-    for (int i = 0; i < MAX_TOP_NET_CONNS; i++) {
-        int y_pos = 90 + i * 62;
-        lv_obj_t *row = create_card(scr_networks, 12, y_pos, 776, 56);
+    for (int i = 0; i < 3; i++) {
+        int y_pos = 290 + i * 58;
+        lv_obj_t *row = create_card(scr_networks, 12, y_pos, 776, 52);
 
         // Rank Badge
         lv_obj_t *lbl_rank = lv_label_create(row);
         char rank_str[8];
         snprintf(rank_str, sizeof(rank_str), "#%d", i + 1);
         lv_label_set_text(lbl_rank, rank_str);
-        lv_obj_set_style_text_color(lbl_rank, i < 3 ? COLOR_ACCENT_CYAN : COLOR_ACCENT_PURPLE, 0);
-        lv_obj_set_style_text_font(lbl_rank, &lv_font_montserrat_16, 0);
-        lv_obj_set_pos(lbl_rank, 10, 10);
+        lv_obj_set_style_text_color(lbl_rank, i == 0 ? COLOR_ACCENT_CORAL : (i == 1 ? COLOR_ACCENT_AMBER : COLOR_ACCENT_CYAN), 0);
+        lv_obj_set_style_text_font(lbl_rank, &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_rank, 10, 8);
 
         // Process Name
         lbl_net_pnames[i] = lv_label_create(row);
         lv_label_set_text(lbl_net_pnames[i], "--");
         lv_obj_set_style_text_color(lbl_net_pnames[i], COLOR_TEXT_MAIN, 0);
-        lv_obj_set_style_text_font(lbl_net_pnames[i], &lv_font_montserrat_16, 0);
-        lv_obj_set_pos(lbl_net_pnames[i], 50, 10);
+        lv_obj_set_style_text_font(lbl_net_pnames[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_net_pnames[i], 50, 8);
 
         // PID
         lbl_net_pids[i] = lv_label_create(row);
         lv_label_set_text(lbl_net_pids[i], "PID: --");
         lv_obj_set_style_text_color(lbl_net_pids[i], COLOR_TEXT_MUTED, 0);
-        lv_obj_set_style_text_font(lbl_net_pids[i], &lv_font_montserrat_14, 0);
-        lv_obj_set_pos(lbl_net_pids[i], 240, 12);
+        lv_obj_set_style_text_font(lbl_net_pids[i], &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_net_pids[i], 240, 10);
 
-        // Remote Endpoint (IP:Port)
+        // Remote Endpoint
         lbl_net_remotes[i] = lv_label_create(row);
         lv_label_set_text(lbl_net_remotes[i], "--");
         lv_obj_set_style_text_color(lbl_net_remotes[i], COLOR_ACCENT_CYAN, 0);
         lv_obj_set_style_text_font(lbl_net_remotes[i], &lv_font_montserrat_14, 0);
-        lv_obj_set_pos(lbl_net_remotes[i], 360, 12);
+        lv_obj_set_pos(lbl_net_remotes[i], 360, 8);
 
         // Status Badge
         lbl_net_statuses[i] = lv_label_create(row);
         lv_label_set_text(lbl_net_statuses[i], "--");
         lv_obj_set_style_text_color(lbl_net_statuses[i], COLOR_ACCENT_GREEN, 0);
         lv_obj_set_style_text_font(lbl_net_statuses[i], &lv_font_montserrat_14, 0);
-        lv_obj_set_pos(lbl_net_statuses[i], 670, 12);
+        lv_obj_set_pos(lbl_net_statuses[i], 670, 8);
     }
 }
 
@@ -687,7 +758,7 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         lv_bar_set_value(bar_gpu_temp, m.gpu_temp > 0.0f ? (int)m.gpu_temp : 0, LV_ANIM_OFF);
     }
 
-    // NETWORK (Bottom Right Card)
+    // NETWORK DASHBOARD (Bottom Right Card)
     if (lbl_net_down && (!hasPrev || fabsf(m.net_down_kb - prev.net_down_kb) >= 0.5f)) {
         if (m.net_down_kb > 1024.0f) {
             snprintf(buf, sizeof(buf), "%.2f MB/s", m.net_down_kb / 1024.0f);
@@ -703,6 +774,46 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
             snprintf(buf, sizeof(buf), "%.1f KB/s", m.net_up_kb);
         }
         lv_label_set_text(lbl_net_up, buf);
+    }
+
+    // DEDICATED NETWORK MONITOR SCREEN (TX / RX & Interface details)
+    if (lbl_net_rx_rate && (!hasPrev || fabsf(m.net_down_kb - prev.net_down_kb) >= 0.5f)) {
+        if (m.net_down_kb > 1024.0f) {
+            snprintf(buf, sizeof(buf), "%.2f MB/s", m.net_down_kb / 1024.0f);
+        } else {
+            snprintf(buf, sizeof(buf), "%.1f KB/s", m.net_down_kb);
+        }
+        lv_label_set_text(lbl_net_rx_rate, buf);
+    }
+    if (bar_net_rx && (!hasPrev || (int)m.net_down_kb != (int)prev.net_down_kb)) {
+        lv_bar_set_value(bar_net_rx, (int)m.net_down_kb, LV_ANIM_OFF);
+    }
+    if (lbl_net_rx_total && (!hasPrev || fabsf(m.net_total_rx_gb - prev.net_total_rx_gb) >= 0.01f)) {
+        snprintf(buf, sizeof(buf), "Session RX Total: %.2f GB", m.net_total_rx_gb);
+        lv_label_set_text(lbl_net_rx_total, buf);
+    }
+
+    if (lbl_net_tx_rate && (!hasPrev || fabsf(m.net_up_kb - prev.net_up_kb) >= 0.5f)) {
+        if (m.net_up_kb > 1024.0f) {
+            snprintf(buf, sizeof(buf), "%.2f MB/s", m.net_up_kb / 1024.0f);
+        } else {
+            snprintf(buf, sizeof(buf), "%.1f KB/s", m.net_up_kb);
+        }
+        lv_label_set_text(lbl_net_tx_rate, buf);
+    }
+    if (bar_net_tx && (!hasPrev || (int)m.net_up_kb != (int)prev.net_up_kb)) {
+        lv_bar_set_value(bar_net_tx, (int)m.net_up_kb, LV_ANIM_OFF);
+    }
+    if (lbl_net_tx_total && (!hasPrev || fabsf(m.net_total_tx_gb - prev.net_total_tx_gb) >= 0.01f)) {
+        snprintf(buf, sizeof(buf), "Session TX Total: %.2f GB", m.net_total_tx_gb);
+        lv_label_set_text(lbl_net_tx_total, buf);
+    }
+
+    if (lbl_net_iface_info && (!hasPrev || strcmp(m.net_interface, prev.net_interface) != 0 || strcmp(m.net_local_ip, prev.net_local_ip) != 0)) {
+        snprintf(buf, sizeof(buf), "INTERFACE: %s  |  LOCAL IP: %s  |  STATUS: CONNECTED", 
+                 m.net_interface[0] ? m.net_interface : "en1", 
+                 m.net_local_ip[0] ? m.net_local_ip : "127.0.0.1");
+        lv_label_set_text(lbl_net_iface_info, buf);
     }
 
     // TOP 6 CPU PROCESSES UPDATE
@@ -737,8 +848,8 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         }
     }
 
-    // TOP 6 NETWORK CONNECTIONS UPDATE
-    for (int i = 0; i < MAX_TOP_NET_CONNS; i++) {
+    // TOP 3 ACTIVE SOCKETS UPDATE
+    for (int i = 0; i < 3; i++) {
         if (i < m.net_conn_count) {
             if (lbl_net_pnames[i] && (!hasPrev || strcmp(m.net_conns[i].name, prev.net_conns[i].name) != 0)) {
                 lv_label_set_text(lbl_net_pnames[i], m.net_conns[i].name);

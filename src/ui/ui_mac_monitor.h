@@ -31,6 +31,10 @@ struct MacSystemMetrics {
     float disk_free_gb;
     float net_up_kb;
     float net_down_kb;
+    float net_total_rx_gb;
+    float net_total_tx_gb;
+    char net_interface[16];
+    char net_local_ip[20];
     char chip_name[32];
     char media_title[64];
     char uptime[24];
