@@ -38,11 +38,12 @@ static lv_obj_t *arc_ram = nullptr;
 static lv_obj_t *lbl_ram_val = nullptr;
 static lv_obj_t *lbl_ram_sub = nullptr;
 
-// Dashboard DISK Widgets (Top-Right Card)
+// Dashboard DISK Widgets (Top-Right Card - Multi Drive Stack)
 static lv_obj_t *card_disk = nullptr;
-static lv_obj_t *bar_disk = nullptr;
-static lv_obj_t *lbl_disk_val = nullptr;
-static lv_obj_t *lbl_disk_sub = nullptr;
+static lv_obj_t *lbl_dash_dname[2];
+static lv_obj_t *lbl_dash_dpct[2];
+static lv_obj_t *bar_dash_disk[2];
+static lv_obj_t *lbl_dash_dsub[2];
 
 // Dashboard THERMAL Widgets (Bottom-Left Card)
 static lv_obj_t *lbl_cpu_temp_val = nullptr;
@@ -263,33 +264,70 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_border_color(card_disk, COLOR_ACCENT_AMBER, LV_STATE_PRESSED);
 
     lv_obj_t *title_disk = lv_label_create(card_disk);
-    lv_label_set_text(title_disk, "STORAGE (SSD)");
+    lv_label_set_text(title_disk, "STORAGE & VOLUMES");
     lv_obj_set_style_text_color(title_disk, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(title_disk, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(title_disk, &lv_font_montserrat_12, 0);
     lv_obj_align(title_disk, LV_ALIGN_TOP_LEFT, 0, 0);
 
-    lbl_disk_val = lv_label_create(card_disk);
-    lv_label_set_text(lbl_disk_val, "0.0%");
-    lv_obj_set_style_text_color(lbl_disk_val, COLOR_ACCENT_AMBER, 0);
-    lv_obj_set_style_text_font(lbl_disk_val, &lv_font_montserrat_24, 0);
-    lv_obj_align(lbl_disk_val, LV_ALIGN_TOP_RIGHT, 0, 0);
+    // Row 0: Internal Storage (Macintosh HD)
+    lbl_dash_dname[0] = lv_label_create(card_disk);
+    lv_label_set_text(lbl_dash_dname[0], "Macintosh HD");
+    lv_obj_set_style_text_color(lbl_dash_dname[0], COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_dash_dname[0], &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_dash_dname[0], 0, 24);
 
-    bar_disk = lv_bar_create(card_disk);
-    lv_obj_set_size(bar_disk, 206, 22);
-    lv_obj_set_pos(bar_disk, 0, 52);
-    lv_bar_set_range(bar_disk, 0, 100);
-    lv_obj_set_style_bg_color(bar_disk, lv_color_hex(0x1E293B), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(bar_disk, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(bar_disk, COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
-    lv_obj_set_style_bg_opa(bar_disk, LV_OPA_COVER, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_disk, 11, LV_PART_MAIN);
-    lv_obj_set_style_radius(bar_disk, 11, LV_PART_INDICATOR);
+    lbl_dash_dpct[0] = lv_label_create(card_disk);
+    lv_label_set_text(lbl_dash_dpct[0], "0.0%");
+    lv_obj_set_style_text_color(lbl_dash_dpct[0], COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_dash_dpct[0], &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_dash_dpct[0], LV_ALIGN_TOP_RIGHT, 0, 22);
 
-    lbl_disk_sub = lv_label_create(card_disk);
-    lv_label_set_text(lbl_disk_sub, "Free: -- GB");
-    lv_obj_set_style_text_color(lbl_disk_sub, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_disk_sub, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_disk_sub, 0, 90);
+    bar_dash_disk[0] = lv_bar_create(card_disk);
+    lv_obj_set_size(bar_dash_disk[0], 206, 12);
+    lv_obj_set_pos(bar_dash_disk[0], 0, 44);
+    lv_bar_set_range(bar_dash_disk[0], 0, 100);
+    lv_obj_set_style_bg_color(bar_dash_disk[0], lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(bar_dash_disk[0], LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_dash_disk[0], COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(bar_dash_disk[0], LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_dash_disk[0], 6, LV_PART_MAIN);
+    lv_obj_set_style_radius(bar_dash_disk[0], 6, LV_PART_INDICATOR);
+
+    lbl_dash_dsub[0] = lv_label_create(card_disk);
+    lv_label_set_text(lbl_dash_dsub[0], "Free: -- GB");
+    lv_obj_set_style_text_color(lbl_dash_dsub[0], COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_dash_dsub[0], &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_dash_dsub[0], 0, 60);
+
+    // Row 1: External Storage (MAC_EXTERNAL_SSD / SD Card)
+    lbl_dash_dname[1] = lv_label_create(card_disk);
+    lv_label_set_text(lbl_dash_dname[1], "MAC_EXTERNAL_SSD");
+    lv_obj_set_style_text_color(lbl_dash_dname[1], COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_dash_dname[1], &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_dash_dname[1], 0, 94);
+
+    lbl_dash_dpct[1] = lv_label_create(card_disk);
+    lv_label_set_text(lbl_dash_dpct[1], "0.0%");
+    lv_obj_set_style_text_color(lbl_dash_dpct[1], COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_dash_dpct[1], &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_dash_dpct[1], LV_ALIGN_TOP_RIGHT, 0, 92);
+
+    bar_dash_disk[1] = lv_bar_create(card_disk);
+    lv_obj_set_size(bar_dash_disk[1], 206, 12);
+    lv_obj_set_pos(bar_dash_disk[1], 0, 114);
+    lv_bar_set_range(bar_dash_disk[1], 0, 100);
+    lv_obj_set_style_bg_color(bar_dash_disk[1], lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(bar_dash_disk[1], LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_dash_disk[1], COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
+    lv_obj_set_style_bg_opa(bar_dash_disk[1], LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_dash_disk[1], 6, LV_PART_MAIN);
+    lv_obj_set_style_radius(bar_dash_disk[1], 6, LV_PART_INDICATOR);
+
+    lbl_dash_dsub[1] = lv_label_create(card_disk);
+    lv_label_set_text(lbl_dash_dsub[1], "Free: -- GB");
+    lv_obj_set_style_text_color(lbl_dash_dsub[1], COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_dash_dsub[1], &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_dash_dsub[1], 0, 130);
 
     // 1.5 THERMAL SENSORS CARD (Bottom Left: 378 x 172)
     lv_obj_t *card_thermal = create_card(scr_dashboard, 12, 296, 378, 172);
@@ -845,20 +883,73 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         lv_label_set_text(lbl_ram_sub, buf);
     }
 
-    // DISK (Dashboard Top-Right Card)
-    if (bar_disk) {
-        int p = (int)roundf(m.disk_pct);
-        if (p < 0) p = 0;
-        if (p > 100) p = 100;
-        lv_bar_set_value(bar_disk, p, LV_ANIM_OFF);
-    }
-    if (lbl_disk_val && (!hasPrev || fabsf(m.disk_pct - prev.disk_pct) >= 0.1f)) {
-        snprintf(buf, sizeof(buf), "%.1f%%", m.disk_pct);
-        lv_label_set_text(lbl_disk_val, buf);
-    }
-    if (lbl_disk_sub && (!hasPrev || fabsf(m.disk_free_gb - prev.disk_free_gb) >= 0.1f)) {
-        snprintf(buf, sizeof(buf), "Free: %.1f GB", m.disk_free_gb);
-        lv_label_set_text(lbl_disk_sub, buf);
+    // DASHBOARD MULTI-DRIVE UPDATE (Top-Right Card Rows)
+    if (m.disk_count > 0) {
+        // Row 0 - Internal Drive (Macintosh HD)
+        if (lbl_dash_dname[0]) lv_label_set_text(lbl_dash_dname[0], m.disks[0].name[0] ? m.disks[0].name : "Macintosh HD");
+        if (lbl_dash_dpct[0]) {
+            snprintf(buf, sizeof(buf), "%.1f%%", m.disks[0].pct);
+            lv_label_set_text(lbl_dash_dpct[0], buf);
+        }
+        if (bar_dash_disk[0]) {
+            int p0 = (int)roundf(m.disks[0].pct);
+            if (p0 < 0) p0 = 0;
+            if (p0 > 100) p0 = 100;
+            lv_bar_set_value(bar_dash_disk[0], p0, LV_ANIM_OFF);
+        }
+        if (lbl_dash_dsub[0]) {
+            snprintf(buf, sizeof(buf), "Free: %.1f GB", m.disks[0].free_gb);
+            lv_label_set_text(lbl_dash_dsub[0], buf);
+        }
+
+        // Row 1 - External Drive (MAC_EXTERNAL_SSD / SD Card)
+        if (m.disk_count > 1) {
+            lv_obj_clear_flag(lbl_dash_dname[1], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(lbl_dash_dpct[1], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(bar_dash_disk[1], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(lbl_dash_dsub[1], LV_OBJ_FLAG_HIDDEN);
+
+            if (lbl_dash_dname[1]) lv_label_set_text(lbl_dash_dname[1], m.disks[1].name);
+            if (lbl_dash_dpct[1]) {
+                snprintf(buf, sizeof(buf), "%.1f%%", m.disks[1].pct);
+                lv_label_set_text(lbl_dash_dpct[1], buf);
+            }
+            if (bar_dash_disk[1]) {
+                int p1 = (int)roundf(m.disks[1].pct);
+                if (p1 < 0) p1 = 0;
+                if (p1 > 100) p1 = 100;
+                lv_bar_set_value(bar_dash_disk[1], p1, LV_ANIM_OFF);
+            }
+            if (lbl_dash_dsub[1]) {
+                snprintf(buf, sizeof(buf), "Free: %.1f GB", m.disks[1].free_gb);
+                lv_label_set_text(lbl_dash_dsub[1], buf);
+            }
+        } else {
+            lv_obj_add_flag(lbl_dash_dname[1], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(lbl_dash_dpct[1], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(bar_dash_disk[1], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(lbl_dash_dsub[1], LV_OBJ_FLAG_HIDDEN);
+        }
+    } else {
+        if (lbl_dash_dname[0]) lv_label_set_text(lbl_dash_dname[0], "Macintosh HD");
+        if (lbl_dash_dpct[0]) {
+            snprintf(buf, sizeof(buf), "%.1f%%", m.disk_pct);
+            lv_label_set_text(lbl_dash_dpct[0], buf);
+        }
+        if (bar_dash_disk[0]) {
+            int p0 = (int)roundf(m.disk_pct);
+            if (p0 < 0) p0 = 0;
+            if (p0 > 100) p0 = 100;
+            lv_bar_set_value(bar_dash_disk[0], p0, LV_ANIM_OFF);
+        }
+        if (lbl_dash_dsub[0]) {
+            snprintf(buf, sizeof(buf), "Free: %.1f GB", m.disk_free_gb);
+            lv_label_set_text(lbl_dash_dsub[0], buf);
+        }
+        lv_obj_add_flag(lbl_dash_dname[1], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(lbl_dash_dpct[1], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(bar_dash_disk[1], LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(lbl_dash_dsub[1], LV_OBJ_FLAG_HIDDEN);
     }
 
     // THERMAL SENSORS (Bottom Left Card)
