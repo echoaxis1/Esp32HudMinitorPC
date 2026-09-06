@@ -5,6 +5,7 @@
 
 #define MAX_TOP_PROCESSES 6
 #define MAX_TOP_NET_CONNS 6
+#define MAX_DISKS 4
 
 struct MacProcessInfo {
     char name[24];
@@ -18,6 +19,15 @@ struct MacNetConnInfo {
     int pid;
     char remote[28];
     char status[12];
+};
+
+struct MacDiskInfo {
+    char name[24];
+    char type[12]; // INT, EXT, SD/USB
+    float used_gb;
+    float free_gb;
+    float total_gb;
+    float pct;
 };
 
 struct MacSystemMetrics {
@@ -44,6 +54,9 @@ struct MacSystemMetrics {
 
     uint8_t net_conn_count;
     MacNetConnInfo net_conns[MAX_TOP_NET_CONNS];
+
+    uint8_t disk_count;
+    MacDiskInfo disks[MAX_DISKS];
 };
 
 class UIMacMonitor {
@@ -53,5 +66,6 @@ public:
     static void showDashboard();
     static void showProcesses();
     static void showNetConnections();
+    static void showStorage();
 };
 

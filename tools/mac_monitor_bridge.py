@@ -100,19 +100,20 @@ def get_macos_memory():
 def get_macos_storage():
     """
     Query exact macOS APFS storage metrics matching macOS System Settings (General > Storage).
-    Uses native helper tools/get_storage if available, otherwise falls back to statvfs decimal.
+    Returns (primary_pct, primary_free, primary_used, primary_total, all_disks_list).
     """
     helper_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "get_storage")
     if os.path.exists(helper_path):
         try:
             out = subprocess.check_output([helper_path], stderr=subprocess.DEVNULL).decode().strip()
-            parts = out.split(',')
-            if len(parts) == 4:
-                pct = float(parts[0])
-                free_gb = float(parts[1])
-                used_gb = float(parts[2])
-                total_gb = float(parts[3])
-                return pct, free_gb, used_gb, total_gb
+            disks = json.loads(out)
+            if disks and len(disks) > 0:
+                primary = disks[0]
+                pct = float(primary.get('p', 0.0))
+                free_gb = float(primary.get('f', 0.0))
+                used_gb = float(primary.get('u', 0.0))
+                total_gb = float(primary.get('tot', 0.0))
+                return pct, free_gb, used_gb, total_gb, disks[:4]
         except Exception:
             pass
 
@@ -125,14 +126,16 @@ def get_macos_storage():
         free_gb = round(free_b / 1e9, 1)
         used_gb = round(used_b / 1e9, 1)
         total_gb = round(total_b / 1e9, 1)
-        return pct, free_gb, used_gb, total_gb
+        disks = [{"n": "Macintosh HD", "t": "INT", "u": used_gb, "f": free_gb, "tot": total_gb, "p": pct}]
+        return pct, free_gb, used_gb, total_gb, disks
     except Exception:
         du = shutil.disk_usage('/')
         pct = round(du.used / du.total * 100, 1)
         free_gb = round(du.free / 1e9, 1)
         used_gb = round(du.used / 1e9, 1)
         total_gb = round(du.total / 1e9, 1)
-        return pct, free_gb, used_gb, total_gb
+        disks = [{"n": "Macintosh HD", "t": "INT", "u": used_gb, "f": free_gb, "tot": total_gb, "p": pct}]
+        return pct, free_gb, used_gb, total_gb, disks
 
 def get_temperatures():
     """Query CPU and GPU temperatures using smctemp."""
@@ -281,7 +284,7 @@ def main():
                 cpu_temp, gpu_temp = get_temperatures()
 
                 # 3. Disk (macOS APFS System Settings match)
-                disk_pct, disk_free_gb, disk_used_gb, disk_total_gb = get_macos_storage()
+                disk_pct, disk_free_gb, disk_used_gb, disk_total_gb, all_disks = get_macos_storage()
 
                 # 4. Network Rate & Cumulative Stats
                 now = time.time()
@@ -341,7 +344,8 @@ def main():
                     "chip": chip_name,
                     "uptime": uptime,
                     "procs": top_procs,
-                    "conns": top_conns
+                    "conns": top_conns,
+                    "disks": all_disks
                 }
 
                 # Drain stale data from previous cycle before sending new payload

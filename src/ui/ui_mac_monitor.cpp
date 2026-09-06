@@ -20,6 +20,7 @@ static lv_obj_t *root_parent = nullptr;
 static lv_obj_t *scr_dashboard = nullptr;
 static lv_obj_t *scr_processes = nullptr;
 static lv_obj_t *scr_networks = nullptr;
+static lv_obj_t *scr_storage = nullptr;
 
 // Dashboard Header Widgets
 static lv_obj_t *lbl_chip = nullptr;
@@ -38,9 +39,11 @@ static lv_obj_t *lbl_ram_val = nullptr;
 static lv_obj_t *lbl_ram_sub = nullptr;
 
 // Dashboard DISK Widgets (Top-Right Card)
+static lv_obj_t *card_disk = nullptr;
 static lv_obj_t *bar_disk = nullptr;
 static lv_obj_t *lbl_disk_val = nullptr;
 static lv_obj_t *lbl_disk_sub = nullptr;
+static lv_obj_t *lbl_disk_badge = nullptr;
 
 // Dashboard THERMAL Widgets (Bottom-Left Card)
 static lv_obj_t *lbl_cpu_temp_val = nullptr;
@@ -72,6 +75,15 @@ static lv_obj_t *lbl_net_pids[MAX_TOP_NET_CONNS];
 static lv_obj_t *lbl_net_remotes[MAX_TOP_NET_CONNS];
 static lv_obj_t *lbl_net_statuses[MAX_TOP_NET_CONNS];
 
+// Storage Screen Widgets
+static lv_obj_t *card_disk_slots[MAX_DISKS];
+static lv_obj_t *lbl_d_badges[MAX_DISKS];
+static lv_obj_t *lbl_d_names[MAX_DISKS];
+static lv_obj_t *lbl_d_pcts[MAX_DISKS];
+static lv_obj_t *bar_d_usages[MAX_DISKS];
+static lv_obj_t *lbl_d_stats[MAX_DISKS];
+static lv_obj_t *lbl_d_subtitles[MAX_DISKS];
+
 static lv_obj_t *create_card(lv_obj_t *parent, int x, int y, int w, int h) {
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_pos(card, x, y);
@@ -93,6 +105,10 @@ static void on_net_card_click(lv_event_t *e) {
     UIMacMonitor::showNetConnections();
 }
 
+static void on_disk_card_click(lv_event_t *e) {
+    UIMacMonitor::showStorage();
+}
+
 static void on_back_btn_click(lv_event_t *e) {
     UIMacMonitor::showDashboard();
 }
@@ -100,19 +116,29 @@ static void on_back_btn_click(lv_event_t *e) {
 void UIMacMonitor::showDashboard() {
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+    if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
     if (scr_dashboard) lv_obj_clear_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::showProcesses() {
     if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+    if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_clear_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::showNetConnections() {
     if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_clear_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+}
+
+void UIMacMonitor::showStorage() {
+    if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+    if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+    if (scr_storage) lv_obj_clear_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::create(lv_obj_t *parent) {
@@ -231,8 +257,11 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_ram_sub, &lv_font_montserrat_12, 0);
     lv_obj_align(lbl_ram_sub, LV_ALIGN_CENTER, 0, 22);
 
-    // 1.4 STORAGE (SSD) CARD (Top Right: 246 x 220)
-    lv_obj_t *card_disk = create_card(scr_dashboard, 542, 66, 246, 220);
+    // 1.4 STORAGE (SSD) CARD (Top Right: 246 x 220) - INTERACTIVE TOUCH BUTTON
+    card_disk = create_card(scr_dashboard, 542, 66, 246, 220);
+    lv_obj_add_flag(card_disk, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card_disk, on_disk_card_click, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_border_color(card_disk, COLOR_ACCENT_AMBER, LV_STATE_PRESSED);
 
     lv_obj_t *title_disk = lv_label_create(card_disk);
     lv_label_set_text(title_disk, "STORAGE (SSD)");
@@ -259,6 +288,12 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(lbl_disk_sub, COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_text_font(lbl_disk_sub, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(lbl_disk_sub, 0, 70);
+
+    lbl_disk_badge = lv_label_create(card_disk);
+    lv_label_set_text(lbl_disk_badge, "1 DRIVE MOUNTED");
+    lv_obj_set_style_text_color(lbl_disk_badge, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_disk_badge, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_disk_badge, 0, 100);
 
     lv_obj_t *lbl_disk_info = lv_label_create(card_disk);
     lv_label_set_text(lbl_disk_info, "Macintosh HD - APFS");
@@ -673,6 +708,102 @@ void UIMacMonitor::create(lv_obj_t *parent) {
         lv_obj_set_style_text_font(lbl_net_statuses[i], &lv_font_montserrat_14, 0);
         lv_obj_set_pos(lbl_net_statuses[i], 670, 8);
     }
+
+    // =========================================================================
+    // 4. STORAGE & DRIVES OVERVIEW CONTAINER (SCREEN 4)
+    // =========================================================================
+    scr_storage = lv_obj_create(parent);
+    lv_obj_set_size(scr_storage, 800, 480);
+    lv_obj_set_pos(scr_storage, 0, 0);
+    lv_obj_set_style_bg_color(scr_storage, COLOR_BG, 0);
+    lv_obj_set_style_border_width(scr_storage, 0, 0);
+    lv_obj_set_style_pad_all(scr_storage, 0, 0);
+    lv_obj_clear_flag(scr_storage, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN); // Initially hidden
+
+    // 4.1 STORAGE HEADER BAR
+    lv_obj_t *s_header = lv_obj_create(scr_storage);
+    lv_obj_set_pos(s_header, 12, 10);
+    lv_obj_set_size(s_header, 776, 46);
+    lv_obj_set_style_bg_color(s_header, COLOR_CARD, 0);
+    lv_obj_set_style_border_color(s_header, COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_border_width(s_header, 1, 0);
+    lv_obj_set_style_radius(s_header, 12, 0);
+    lv_obj_clear_flag(s_header, LV_OBJ_FLAG_SCROLLABLE);
+
+    // BACK BUTTON
+    lv_obj_t *btn_s_back = lv_btn_create(s_header);
+    lv_obj_set_size(btn_s_back, 110, 34);
+    lv_obj_align(btn_s_back, LV_ALIGN_LEFT_MID, 4, 0);
+    lv_obj_set_style_bg_color(btn_s_back, lv_color_hex(0x1E293B), 0);
+    lv_obj_set_style_border_color(btn_s_back, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_border_width(btn_s_back, 1, 0);
+    lv_obj_set_style_radius(btn_s_back, 8, 0);
+    lv_obj_add_event_cb(btn_s_back, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *lbl_s_back = lv_label_create(btn_s_back);
+    lv_label_set_text(lbl_s_back, "< BACK");
+    lv_obj_set_style_text_color(lbl_s_back, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_s_back, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_s_back, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_t *lbl_s_title = lv_label_create(s_header);
+    lv_label_set_text(lbl_s_title, "STORAGE & DRIVES OVERVIEW (HOTPLUG DETECT)");
+    lv_obj_set_style_text_color(lbl_s_title, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_s_title, &lv_font_montserrat_16, 0);
+    lv_obj_align(lbl_s_title, LV_ALIGN_CENTER, 30, 0);
+
+    // 4.2 DRIVE CARDS (2x2 Grid)
+    const int slot_x[MAX_DISKS] = {12, 408, 12, 408};
+    const int slot_y[MAX_DISKS] = {66, 66, 268, 268};
+
+    for (int i = 0; i < MAX_DISKS; i++) {
+        card_disk_slots[i] = create_card(scr_storage, slot_x[i], slot_y[i], 380, 194);
+
+        // Type Badge (e.g. [INT], [EXT], [SD/USB])
+        lbl_d_badges[i] = lv_label_create(card_disk_slots[i]);
+        lv_label_set_text(lbl_d_badges[i], "[INT]");
+        lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_CYAN, 0);
+        lv_obj_set_style_text_font(lbl_d_badges[i], &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_d_badges[i], 0, 2);
+
+        // Drive Name
+        lbl_d_names[i] = lv_label_create(card_disk_slots[i]);
+        lv_label_set_text(lbl_d_names[i], "Macintosh HD");
+        lv_obj_set_style_text_color(lbl_d_names[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_d_names[i], &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_d_names[i], 60, 0);
+
+        // Percentage Label
+        lbl_d_pcts[i] = lv_label_create(card_disk_slots[i]);
+        lv_label_set_text(lbl_d_pcts[i], "0.0%");
+        lv_obj_set_style_text_color(lbl_d_pcts[i], COLOR_ACCENT_AMBER, 0);
+        lv_obj_set_style_text_font(lbl_d_pcts[i], &lv_font_montserrat_20, 0);
+        lv_obj_align(lbl_d_pcts[i], LV_ALIGN_TOP_RIGHT, 0, 0);
+
+        // Progress Bar
+        bar_d_usages[i] = lv_bar_create(card_disk_slots[i]);
+        lv_obj_set_size(bar_d_usages[i], 340, 14);
+        lv_obj_set_pos(bar_d_usages[i], 0, 40);
+        lv_bar_set_range(bar_d_usages[i], 0, 100);
+        lv_obj_set_style_bg_color(bar_d_usages[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(bar_d_usages[i], COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(bar_d_usages[i], 7, 0);
+
+        // Stats Line 1
+        lbl_d_stats[i] = lv_label_create(card_disk_slots[i]);
+        lv_label_set_text(lbl_d_stats[i], "Used: -- GB  |  Free: -- GB");
+        lv_obj_set_style_text_color(lbl_d_stats[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_d_stats[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_d_stats[i], 0, 70);
+
+        // Stats Line 2 (Capacity & Mount info)
+        lbl_d_subtitles[i] = lv_label_create(card_disk_slots[i]);
+        lv_label_set_text(lbl_d_subtitles[i], "Total Capacity: -- GB");
+        lv_obj_set_style_text_color(lbl_d_subtitles[i], COLOR_TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(lbl_d_subtitles[i], &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_d_subtitles[i], 0, 105);
+    }
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
@@ -721,7 +852,7 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         lv_label_set_text(lbl_ram_sub, buf);
     }
 
-    // DISK
+    // DISK (Dashboard Top-Right Card)
     if (bar_disk && (!hasPrev || (int)m.disk_pct != (int)prev.disk_pct)) {
         lv_bar_set_value(bar_disk, (int)m.disk_pct, LV_ANIM_OFF);
     }
@@ -732,6 +863,16 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     if (lbl_disk_sub && (!hasPrev || fabsf(m.disk_free_gb - prev.disk_free_gb) >= 0.1f)) {
         snprintf(buf, sizeof(buf), "Free: %.1f GB", m.disk_free_gb);
         lv_label_set_text(lbl_disk_sub, buf);
+    }
+    if (lbl_disk_badge && (!hasPrev || m.disk_count != prev.disk_count)) {
+        if (m.disk_count > 1) {
+            snprintf(buf, sizeof(buf), "+%d EXT DRIVE%s", m.disk_count - 1, m.disk_count > 2 ? "S" : "");
+            lv_label_set_text(lbl_disk_badge, buf);
+            lv_obj_set_style_text_color(lbl_disk_badge, COLOR_ACCENT_GREEN, 0);
+        } else {
+            lv_label_set_text(lbl_disk_badge, "1 DRIVE MOUNTED");
+            lv_obj_set_style_text_color(lbl_disk_badge, COLOR_TEXT_MUTED, 0);
+        }
     }
 
     // THERMAL SENSORS (Bottom Left Card)
@@ -881,6 +1022,58 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         }
     }
 
+    // ALL MOUNTED DISKS UPDATE (Screen 4)
+    for (int i = 0; i < MAX_DISKS; i++) {
+        if (i < m.disk_count) {
+            lv_obj_clear_flag(card_disk_slots[i], LV_OBJ_FLAG_HIDDEN);
+
+            // Badge
+            if (lbl_d_badges[i] && (!hasPrev || strcmp(m.disks[i].type, prev.disks[i].type) != 0)) {
+                snprintf(buf, sizeof(buf), "[%s]", m.disks[i].type);
+                lv_label_set_text(lbl_d_badges[i], buf);
+                if (strstr(m.disks[i].type, "INT")) {
+                    lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_CYAN, 0);
+                } else if (strstr(m.disks[i].type, "SD") || strstr(m.disks[i].type, "USB")) {
+                    lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_GREEN, 0);
+                } else {
+                    lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_AMBER, 0);
+                }
+            }
+
+            // Name
+            if (lbl_d_names[i] && (!hasPrev || strcmp(m.disks[i].name, prev.disks[i].name) != 0)) {
+                lv_label_set_text(lbl_d_names[i], m.disks[i].name);
+            }
+
+            // Percentage
+            if (lbl_d_pcts[i] && (!hasPrev || fabsf(m.disks[i].pct - prev.disks[i].pct) >= 0.1f)) {
+                snprintf(buf, sizeof(buf), "%.1f%%", m.disks[i].pct);
+                lv_label_set_text(lbl_d_pcts[i], buf);
+            }
+
+            // Usage Bar
+            if (bar_d_usages[i] && (!hasPrev || (int)m.disks[i].pct != (int)prev.disks[i].pct)) {
+                lv_bar_set_value(bar_d_usages[i], (int)m.disks[i].pct, LV_ANIM_OFF);
+            }
+
+            // Stats
+            if (lbl_d_stats[i] && (!hasPrev || fabsf(m.disks[i].used_gb - prev.disks[i].used_gb) >= 0.1f || fabsf(m.disks[i].free_gb - prev.disks[i].free_gb) >= 0.1f)) {
+                snprintf(buf, sizeof(buf), "Used: %.1f GB  |  Free: %.1f GB", m.disks[i].used_gb, m.disks[i].free_gb);
+                lv_label_set_text(lbl_d_stats[i], buf);
+            }
+
+            // Subtitle Total
+            if (lbl_d_subtitles[i] && (!hasPrev || fabsf(m.disks[i].total_gb - prev.disks[i].total_gb) >= 0.1f)) {
+                snprintf(buf, sizeof(buf), "Total Capacity: %.1f GB", m.disks[i].total_gb);
+                lv_label_set_text(lbl_d_subtitles[i], buf);
+            }
+        } else {
+            // Hide slot if no drive present
+            lv_obj_add_flag(card_disk_slots[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
     prev = m;
     hasPrev = true;
 }
+

@@ -102,6 +102,26 @@ void processMacMetricsJson(const char *jsonStr) {
         }
     }
 
+    // Mounted Disks Parsing
+    latestMetrics.disk_count = 0;
+    if (doc["disks"].is<JsonArray>()) {
+        for (JsonObject d : doc["disks"].as<JsonArray>()) {
+            if (latestMetrics.disk_count >= MAX_DISKS) break;
+            int idx = latestMetrics.disk_count;
+            const char *name = d["n"] | "Disk";
+            strncpy(latestMetrics.disks[idx].name, name, sizeof(latestMetrics.disks[idx].name) - 1);
+            latestMetrics.disks[idx].name[sizeof(latestMetrics.disks[idx].name) - 1] = '\0';
+            const char *type = d["t"] | "EXT";
+            strncpy(latestMetrics.disks[idx].type, type, sizeof(latestMetrics.disks[idx].type) - 1);
+            latestMetrics.disks[idx].type[sizeof(latestMetrics.disks[idx].type) - 1] = '\0';
+            latestMetrics.disks[idx].used_gb = d["u"] | 0.0f;
+            latestMetrics.disks[idx].free_gb = d["f"] | 0.0f;
+            latestMetrics.disks[idx].total_gb = d["tot"] | 0.0f;
+            latestMetrics.disks[idx].pct = d["p"] | 0.0f;
+            latestMetrics.disk_count++;
+        }
+    }
+
     metricsReady = true;
     Serial.println("ACK:OK");
 }
@@ -172,6 +192,15 @@ void setup() {
         initMetrics.net_conns[i].pid = 0;
         strcpy(initMetrics.net_conns[i].remote, "--");
         strcpy(initMetrics.net_conns[i].status, "--");
+    }
+    initMetrics.disk_count = 0;
+    for (int i = 0; i < MAX_DISKS; i++) {
+        strcpy(initMetrics.disks[i].name, "--");
+        strcpy(initMetrics.disks[i].type, "EXT");
+        initMetrics.disks[i].used_gb = 0.0f;
+        initMetrics.disks[i].free_gb = 0.0f;
+        initMetrics.disks[i].total_gb = 0.0f;
+        initMetrics.disks[i].pct = 0.0f;
     }
 
     UIMacMonitor::updateMetrics(initMetrics);
