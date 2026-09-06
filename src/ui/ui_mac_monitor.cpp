@@ -43,7 +43,6 @@ static lv_obj_t *card_disk = nullptr;
 static lv_obj_t *bar_disk = nullptr;
 static lv_obj_t *lbl_disk_val = nullptr;
 static lv_obj_t *lbl_disk_sub = nullptr;
-static lv_obj_t *lbl_disk_badge = nullptr;
 
 // Dashboard THERMAL Widgets (Bottom-Left Card)
 static lv_obj_t *lbl_cpu_temp_val = nullptr;
@@ -276,30 +275,21 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_align(lbl_disk_val, LV_ALIGN_TOP_RIGHT, 0, 0);
 
     bar_disk = lv_bar_create(card_disk);
-    lv_obj_set_size(bar_disk, 206, 18);
-    lv_obj_set_pos(bar_disk, 0, 42);
+    lv_obj_set_size(bar_disk, 206, 22);
+    lv_obj_set_pos(bar_disk, 0, 52);
     lv_bar_set_range(bar_disk, 0, 100);
     lv_obj_set_style_bg_color(bar_disk, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(bar_disk, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(bar_disk, COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_disk, 9, 0);
+    lv_obj_set_style_bg_opa(bar_disk, LV_OPA_COVER, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_disk, 11, LV_PART_MAIN);
+    lv_obj_set_style_radius(bar_disk, 11, LV_PART_INDICATOR);
 
     lbl_disk_sub = lv_label_create(card_disk);
     lv_label_set_text(lbl_disk_sub, "Free: -- GB");
     lv_obj_set_style_text_color(lbl_disk_sub, COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_text_font(lbl_disk_sub, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_disk_sub, 0, 70);
-
-    lbl_disk_badge = lv_label_create(card_disk);
-    lv_label_set_text(lbl_disk_badge, "1 DRIVE MOUNTED");
-    lv_obj_set_style_text_color(lbl_disk_badge, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(lbl_disk_badge, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_disk_badge, 0, 100);
-
-    lv_obj_t *lbl_disk_info = lv_label_create(card_disk);
-    lv_label_set_text(lbl_disk_info, "Macintosh HD - APFS");
-    lv_obj_set_style_text_color(lbl_disk_info, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(lbl_disk_info, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_disk_info, 0, 130);
+    lv_obj_set_pos(lbl_disk_sub, 0, 90);
 
     // 1.5 THERMAL SENSORS CARD (Bottom Left: 378 x 172)
     lv_obj_t *card_thermal = create_card(scr_dashboard, 12, 296, 378, 172);
@@ -783,26 +773,29 @@ void UIMacMonitor::create(lv_obj_t *parent) {
 
         // Progress Bar
         bar_d_usages[i] = lv_bar_create(card_disk_slots[i]);
-        lv_obj_set_size(bar_d_usages[i], 340, 14);
-        lv_obj_set_pos(bar_d_usages[i], 0, 40);
+        lv_obj_set_size(bar_d_usages[i], 340, 18);
+        lv_obj_set_pos(bar_d_usages[i], 0, 42);
         lv_bar_set_range(bar_d_usages[i], 0, 100);
         lv_obj_set_style_bg_color(bar_d_usages[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(bar_d_usages[i], LV_OPA_COVER, LV_PART_MAIN);
         lv_obj_set_style_bg_color(bar_d_usages[i], COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
-        lv_obj_set_style_radius(bar_d_usages[i], 7, 0);
+        lv_obj_set_style_bg_opa(bar_d_usages[i], LV_OPA_COVER, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(bar_d_usages[i], 9, LV_PART_MAIN);
+        lv_obj_set_style_radius(bar_d_usages[i], 9, LV_PART_INDICATOR);
 
         // Stats Line 1
         lbl_d_stats[i] = lv_label_create(card_disk_slots[i]);
         lv_label_set_text(lbl_d_stats[i], "Used: -- GB  |  Free: -- GB");
         lv_obj_set_style_text_color(lbl_d_stats[i], COLOR_TEXT_MAIN, 0);
         lv_obj_set_style_text_font(lbl_d_stats[i], &lv_font_montserrat_14, 0);
-        lv_obj_set_pos(lbl_d_stats[i], 0, 70);
+        lv_obj_set_pos(lbl_d_stats[i], 0, 74);
 
         // Stats Line 2 (Capacity & Mount info)
         lbl_d_subtitles[i] = lv_label_create(card_disk_slots[i]);
         lv_label_set_text(lbl_d_subtitles[i], "Total Capacity: -- GB");
         lv_obj_set_style_text_color(lbl_d_subtitles[i], COLOR_TEXT_MUTED, 0);
         lv_obj_set_style_text_font(lbl_d_subtitles[i], &lv_font_montserrat_12, 0);
-        lv_obj_set_pos(lbl_d_subtitles[i], 0, 105);
+        lv_obj_set_pos(lbl_d_subtitles[i], 0, 106);
     }
 }
 
@@ -853,8 +846,11 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     }
 
     // DISK (Dashboard Top-Right Card)
-    if (bar_disk && (!hasPrev || (int)m.disk_pct != (int)prev.disk_pct)) {
-        lv_bar_set_value(bar_disk, (int)m.disk_pct, LV_ANIM_OFF);
+    if (bar_disk) {
+        int p = (int)roundf(m.disk_pct);
+        if (p < 0) p = 0;
+        if (p > 100) p = 100;
+        lv_bar_set_value(bar_disk, p, LV_ANIM_OFF);
     }
     if (lbl_disk_val && (!hasPrev || fabsf(m.disk_pct - prev.disk_pct) >= 0.1f)) {
         snprintf(buf, sizeof(buf), "%.1f%%", m.disk_pct);
@@ -863,16 +859,6 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     if (lbl_disk_sub && (!hasPrev || fabsf(m.disk_free_gb - prev.disk_free_gb) >= 0.1f)) {
         snprintf(buf, sizeof(buf), "Free: %.1f GB", m.disk_free_gb);
         lv_label_set_text(lbl_disk_sub, buf);
-    }
-    if (lbl_disk_badge && (!hasPrev || m.disk_count != prev.disk_count)) {
-        if (m.disk_count > 1) {
-            snprintf(buf, sizeof(buf), "+%d EXT DRIVE%s", m.disk_count - 1, m.disk_count > 2 ? "S" : "");
-            lv_label_set_text(lbl_disk_badge, buf);
-            lv_obj_set_style_text_color(lbl_disk_badge, COLOR_ACCENT_GREEN, 0);
-        } else {
-            lv_label_set_text(lbl_disk_badge, "1 DRIVE MOUNTED");
-            lv_obj_set_style_text_color(lbl_disk_badge, COLOR_TEXT_MUTED, 0);
-        }
     }
 
     // THERMAL SENSORS (Bottom Left Card)
@@ -1027,44 +1013,50 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         if (i < m.disk_count) {
             lv_obj_clear_flag(card_disk_slots[i], LV_OBJ_FLAG_HIDDEN);
 
-            // Badge
-            if (lbl_d_badges[i] && (!hasPrev || strcmp(m.disks[i].type, prev.disks[i].type) != 0)) {
+            // Badge & Bar Indicator Color
+            if (lbl_d_badges[i]) {
                 snprintf(buf, sizeof(buf), "[%s]", m.disks[i].type);
                 lv_label_set_text(lbl_d_badges[i], buf);
                 if (strstr(m.disks[i].type, "INT")) {
                     lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_CYAN, 0);
+                    if (bar_d_usages[i]) lv_obj_set_style_bg_color(bar_d_usages[i], COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
                 } else if (strstr(m.disks[i].type, "SD") || strstr(m.disks[i].type, "USB")) {
                     lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_GREEN, 0);
+                    if (bar_d_usages[i]) lv_obj_set_style_bg_color(bar_d_usages[i], COLOR_ACCENT_GREEN, LV_PART_INDICATOR);
                 } else {
                     lv_obj_set_style_text_color(lbl_d_badges[i], COLOR_ACCENT_AMBER, 0);
+                    if (bar_d_usages[i]) lv_obj_set_style_bg_color(bar_d_usages[i], COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
                 }
             }
 
             // Name
-            if (lbl_d_names[i] && (!hasPrev || strcmp(m.disks[i].name, prev.disks[i].name) != 0)) {
+            if (lbl_d_names[i]) {
                 lv_label_set_text(lbl_d_names[i], m.disks[i].name);
             }
 
             // Percentage
-            if (lbl_d_pcts[i] && (!hasPrev || fabsf(m.disks[i].pct - prev.disks[i].pct) >= 0.1f)) {
+            if (lbl_d_pcts[i]) {
                 snprintf(buf, sizeof(buf), "%.1f%%", m.disks[i].pct);
                 lv_label_set_text(lbl_d_pcts[i], buf);
             }
 
             // Usage Bar
-            if (bar_d_usages[i] && (!hasPrev || (int)m.disks[i].pct != (int)prev.disks[i].pct)) {
-                lv_bar_set_value(bar_d_usages[i], (int)m.disks[i].pct, LV_ANIM_OFF);
+            if (bar_d_usages[i]) {
+                int p = (int)roundf(m.disks[i].pct);
+                if (p < 0) p = 0;
+                if (p > 100) p = 100;
+                lv_bar_set_value(bar_d_usages[i], p, LV_ANIM_OFF);
             }
 
-            // Stats
-            if (lbl_d_stats[i] && (!hasPrev || fabsf(m.disks[i].used_gb - prev.disks[i].used_gb) >= 0.1f || fabsf(m.disks[i].free_gb - prev.disks[i].free_gb) >= 0.1f)) {
+            // Stats Line 1
+            if (lbl_d_stats[i]) {
                 snprintf(buf, sizeof(buf), "Used: %.1f GB  |  Free: %.1f GB", m.disks[i].used_gb, m.disks[i].free_gb);
                 lv_label_set_text(lbl_d_stats[i], buf);
             }
 
             // Subtitle Total
-            if (lbl_d_subtitles[i] && (!hasPrev || fabsf(m.disks[i].total_gb - prev.disks[i].total_gb) >= 0.1f)) {
-                snprintf(buf, sizeof(buf), "Total Capacity: %.1f GB", m.disks[i].total_gb);
+            if (lbl_d_subtitles[i]) {
+                snprintf(buf, sizeof(buf), "Total: %.1f GB  |  Mounted", m.disks[i].total_gb);
                 lv_label_set_text(lbl_d_subtitles[i], buf);
             }
         } else {
