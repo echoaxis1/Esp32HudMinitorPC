@@ -51,6 +51,51 @@ def get_uptime():
     except Exception:
         return "--"
 
+def get_macos_memory():
+    """
+    Calculate memory stats matching macOS Activity Monitor:
+    Memory Used = App Memory + Wired Memory + Compressed Memory
+    Where:
+      App Memory = (Anonymous pages - Pages purgeable) * PageSize
+      Wired Memory = Pages wired down * PageSize
+      Compressed Memory = Pages occupied by compressor * PageSize
+    """
+    try:
+        vm = subprocess.check_output(['vm_stat'], stderr=subprocess.DEVNULL).decode()
+        stats = {}
+        for line in vm.splitlines():
+            if ':' in line:
+                k, v = line.split(':', 1)
+                val = v.strip().rstrip('.')
+                if val.isdigit():
+                    stats[k.strip()] = int(val)
+
+        page_size = 16384
+        try:
+            pg = subprocess.check_output(['sysctl', '-n', 'hw.pagesize'], stderr=subprocess.DEVNULL).decode().strip()
+            page_size = int(pg)
+        except Exception:
+            pass
+
+        total_mem = psutil.virtual_memory().total
+        anon = stats.get("Anonymous pages", 0)
+        purgeable = stats.get("Pages purgeable", 0)
+        wired = stats.get("Pages wired down", 0)
+        compressor = stats.get("Pages occupied by compressor", 0)
+
+        app_bytes = max(0, anon - purgeable) * page_size
+        wired_bytes = wired * page_size
+        compressed_bytes = compressor * page_size
+        used_bytes = app_bytes + wired_bytes + compressed_bytes
+
+        used_gb = round(used_bytes / (1024**3), 1)
+        total_gb = round(total_mem / (1024**3), 1)
+        pct = round((used_bytes / total_mem) * 100, 1)
+        return pct, used_gb, total_gb
+    except Exception:
+        mem = psutil.virtual_memory()
+        return round(mem.percent, 1), round(mem.used / (1024**3), 1), round(mem.total / (1024**3), 1)
+
 def get_temperatures():
     """Query CPU and GPU temperatures using smctemp."""
     cpu_t = 0.0
@@ -192,7 +237,7 @@ def main():
             while True:
                 # 1. CPU & RAM
                 cpu_pct = psutil.cpu_percent(interval=None)
-                mem = psutil.virtual_memory()
+                ram_pct, ram_used, ram_total = get_macos_memory()
 
                 # 2. Temperature (CPU & GPU SoC)
                 cpu_temp, gpu_temp = get_temperatures()
@@ -246,9 +291,9 @@ def main():
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
                     "gpu_temp": gpu_temp,
-                    "ram_pct": round(mem.percent, 1),
-                    "ram_used": round(mem.used / (1024**3), 1),
-                    "ram_total": round(mem.total / (1024**3), 1),
+                    "ram_pct": ram_pct,
+                    "ram_used": ram_used,
+                    "ram_total": ram_total,
                     "disk_pct": disk_pct,
                     "disk_free": disk_free_gb,
                     "net_down": net_down_kb,
