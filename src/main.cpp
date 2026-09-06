@@ -4,7 +4,7 @@
 #include "hardware/display.h"
 #include "ui/ui_mac_monitor.h"
 
-static char serialBuf[1024];
+static char serialBuf[2048];
 static size_t bufIdx = 0;
 static bool metricsReady = false;
 static MacSystemMetrics latestMetrics;
@@ -14,7 +14,8 @@ void processMacMetricsJson(const char *jsonStr) {
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, jsonStr);
     if (err) {
-        return; // silently skip bad packets
+        Serial.printf("ERR:JSON_%s\n", err.c_str());
+        return;
     }
 
     latestMetrics.cpu_pct       = doc["cpu"].as<float>();
@@ -96,6 +97,8 @@ void handleSerialInput() {
 }
 
 void setup() {
+    Serial.setRxBufferSize(4096);
+    Serial.setTxBufferSize(4096);
     Serial.begin(115200);
     delay(500);
 

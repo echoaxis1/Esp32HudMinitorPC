@@ -28,20 +28,22 @@ static bool gt911_read(uint16_t *x, uint16_t *y) {
         return false;
     }
 
-    Wire.requestFrom(gt911_addr, (uint8_t)1);
-    if (!Wire.available()) return false;
+    if (Wire.requestFrom(gt911_addr, (uint8_t)1) != 1) return false;
     uint8_t pointInfo = Wire.read();
     uint8_t bufferStatus = (pointInfo >> 7) & 1;
     uint8_t touches = pointInfo & 0x0F;
 
+    if (bufferStatus == 0) {
+        return false;
+    }
+
     bool touched = false;
-    if (bufferStatus == 1 && touches > 0) {
+    if (touches > 0) {
         Wire.beginTransmission(gt911_addr);
         Wire.write(0x81);
         Wire.write(0x4F);
         if (Wire.endTransmission() == 0) {
-            Wire.requestFrom(gt911_addr, (uint8_t)6);
-            if (Wire.available() >= 6) {
+            if (Wire.requestFrom(gt911_addr, (uint8_t)6) == 6) {
                 Wire.read(); // track id
                 uint8_t xl = Wire.read();
                 uint8_t xh = Wire.read();
@@ -55,7 +57,7 @@ static bool gt911_read(uint16_t *x, uint16_t *y) {
         }
     }
 
-    // Clear buffer status flag in GT911
+    // Clear buffer status flag in GT911 ONLY after reading when bufferStatus was 1
     Wire.beginTransmission(gt911_addr);
     Wire.write(0x81);
     Wire.write(0x4E);
@@ -71,6 +73,7 @@ static void my_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
         data->state = LV_INDEV_STATE_PR;
         data->point.x = x;
         data->point.y = y;
+        Serial.printf("[TOUCH] Pressed at X=%d, Y=%d\n", x, y);
     } else {
         data->state = LV_INDEV_STATE_REL;
     }

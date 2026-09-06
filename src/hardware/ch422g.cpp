@@ -3,13 +3,13 @@
 
 CH422G ioExpander;
 
-CH422G::CH422G() : _wire(&Wire), _addr(CH422G_I2C_ADDR), _outputState(0xFF) {}
+CH422G::CH422G() : _wire(&Wire), _addr(0x38), _outputState(0xFF) {}
 
 bool CH422G::begin(TwoWire &wire, uint8_t addr) {
     _wire = &wire;
     _addr = addr;
 
-    // Set IO direction for CH422G (0x24: System command register 0x48 sets open-drain/push-pull outputs)
+    // Set IO direction for CH422G: System command 0x24 (8-bit 0x48) with 0x01 enables EXIO
     _wire->beginTransmission(0x24);
     _wire->write(0x01); // Enable EXIO
     uint8_t error = _wire->endTransmission();
@@ -24,7 +24,8 @@ bool CH422G::begin(TwoWire &wire, uint8_t addr) {
 }
 
 void CH422G::writeOutput(uint8_t state) {
-    _wire->beginTransmission(_addr);
+    // EXIO output register on CH422G is at 7-bit address 0x38 (8-bit 0x70)
+    _wire->beginTransmission(0x38);
     _wire->write(state);
     _wire->endTransmission();
 }
