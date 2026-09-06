@@ -29,34 +29,26 @@ def get_chip_name():
     except Exception:
         return "Apple Silicon"
 
+_BOOT_TIME = None
+
 def get_uptime():
+    """In-memory zero-process uptime calculation."""
+    global _BOOT_TIME
     try:
-        out = subprocess.check_output(['uptime'], stderr=subprocess.DEVNULL).decode().strip()
-        import re
-        m = re.search(r'up\s+([^,]+(?:,\s*[^,]+)?)', out)
-        if m:
-            raw = m.group(1).strip()
-            parts = [p.strip() for p in raw.split(',')]
-            days_str = ''
-            time_str = ''
-            for p in parts:
-                if 'day' in p:
-                    days_str = p.split()[0] + 'd'
-                elif ':' in p:
-                    h, mn = p.split(':')
-                    time_str = f"{int(h)}h {int(mn)}m"
-                elif 'min' in p:
-                    time_str = f"{p.split()[0]}m"
-            if days_str and time_str:
-                return f"{days_str} {time_str}"
-            elif days_str:
-                return days_str
-            elif time_str:
-                return time_str
-            return raw
+        if _BOOT_TIME is None:
+            _BOOT_TIME = psutil.boot_time()
+        elapsed = int(time.time() - _BOOT_TIME)
+        days = elapsed // 86400
+        hours = (elapsed % 86400) // 3600
+        mins = (elapsed % 3600) // 60
+        if days > 0:
+            return f"{days}d {hours}h {mins}m"
+        elif hours > 0:
+            return f"{hours}h {mins}m"
+        else:
+            return f"{mins}m"
     except Exception:
-        pass
-    return "--"
+        return "--"
 
 def get_temperatures():
     """Query CPU and GPU temperatures using smctemp."""
@@ -152,8 +144,7 @@ def main():
                 last_net = curr_net
                 last_time = now
 
-                # 5. Media & Uptime
-                media = get_media_info()
+                # 5. Uptime
                 uptime = get_uptime()
 
                 payload = {
