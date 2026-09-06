@@ -9,3 +9,4 @@ __pycache__/
 *.bin
 *.elf
 *.log
+tools/get_storage
