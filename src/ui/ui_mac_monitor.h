@@ -4,12 +4,20 @@
 #include <Arduino.h>
 
 #define MAX_TOP_PROCESSES 6
+#define MAX_TOP_NET_CONNS 6
 
 struct MacProcessInfo {
     char name[24];
     int pid;
     float cpu_pct;
     float ram_pct;
+};
+
+struct MacNetConnInfo {
+    char name[24];
+    int pid;
+    char remote[28];
+    char status[12];
 };
 
 struct MacSystemMetrics {
@@ -29,6 +37,9 @@ struct MacSystemMetrics {
     
     uint8_t process_count;
     MacProcessInfo top_processes[MAX_TOP_PROCESSES];
+
+    uint8_t net_conn_count;
+    MacNetConnInfo net_conns[MAX_TOP_NET_CONNS];
 };
 
 class UIMacMonitor {
@@ -37,4 +48,6 @@ public:
     static void updateMetrics(const MacSystemMetrics &metrics);
     static void showDashboard();
     static void showProcesses();
+    static void showNetConnections();
 };
+

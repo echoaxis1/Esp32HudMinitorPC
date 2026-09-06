@@ -66,6 +66,26 @@ void processMacMetricsJson(const char *jsonStr) {
         }
     }
 
+    // Top Network Connections Parsing
+    latestMetrics.net_conn_count = 0;
+    if (doc["conns"].is<JsonArray>()) {
+        for (JsonObject c : doc["conns"].as<JsonArray>()) {
+            if (latestMetrics.net_conn_count >= MAX_TOP_NET_CONNS) break;
+            int idx = latestMetrics.net_conn_count;
+            const char *name = c["n"] | "--";
+            strncpy(latestMetrics.net_conns[idx].name, name, sizeof(latestMetrics.net_conns[idx].name) - 1);
+            latestMetrics.net_conns[idx].name[sizeof(latestMetrics.net_conns[idx].name) - 1] = '\0';
+            latestMetrics.net_conns[idx].pid = c["p"] | 0;
+            const char *remote = c["r"] | "--";
+            strncpy(latestMetrics.net_conns[idx].remote, remote, sizeof(latestMetrics.net_conns[idx].remote) - 1);
+            latestMetrics.net_conns[idx].remote[sizeof(latestMetrics.net_conns[idx].remote) - 1] = '\0';
+            const char *status = c["s"] | "ESTAB";
+            strncpy(latestMetrics.net_conns[idx].status, status, sizeof(latestMetrics.net_conns[idx].status) - 1);
+            latestMetrics.net_conns[idx].status[sizeof(latestMetrics.net_conns[idx].status) - 1] = '\0';
+            latestMetrics.net_conn_count++;
+        }
+    }
+
     metricsReady = true;
     Serial.println("ACK:OK");
 }
@@ -129,6 +149,13 @@ void setup() {
         initMetrics.top_processes[i].pid = 0;
         initMetrics.top_processes[i].cpu_pct = 0.0f;
         initMetrics.top_processes[i].ram_pct = 0.0f;
+    }
+    initMetrics.net_conn_count = 0;
+    for (int i = 0; i < MAX_TOP_NET_CONNS; i++) {
+        strcpy(initMetrics.net_conns[i].name, "--");
+        initMetrics.net_conns[i].pid = 0;
+        strcpy(initMetrics.net_conns[i].remote, "--");
+        strcpy(initMetrics.net_conns[i].status, "--");
     }
 
     UIMacMonitor::updateMetrics(initMetrics);

@@ -118,6 +118,46 @@ def get_top_processes(limit=6):
         })
     return top
 
+def get_network_connections(limit=6):
+    """Fetch active network socket connections per process."""
+    conns = []
+    for p in psutil.process_iter(['pid', 'name']):
+        try:
+            c_list = p.net_connections(kind='inet')
+            if c_list:
+                pname = p.info['name']
+                pid = p.info['pid']
+                for c in c_list:
+                    if c.raddr:
+                        ip = c.raddr.ip
+                        port = c.raddr.port
+                        is_local = ip.startswith('127.') or ip == '::1' or ip.startswith('fe80')
+                        r_str = f"{ip}:{port}"
+                        status = c.status if c.status else "ESTAB"
+                        if status == "ESTABLISHED":
+                            status = "ESTAB"
+                        conns.append({
+                            "n": pname[:16],
+                            "p": pid,
+                            "r": r_str[:22],
+                            "s": status[:8],
+                            "_loc": 1 if is_local else 0
+                        })
+        except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
+            pass
+
+    # Sort external connections first, then established
+    conns.sort(key=lambda x: (x['_loc'], 0 if x['s'] == 'ESTAB' else 1))
+    top = []
+    for c in conns[:limit]:
+        top.append({
+            "n": c['n'],
+            "p": c['p'],
+            "r": c['r'],
+            "s": c['s']
+        })
+    return top
+
 def main():
     chip_name = get_chip_name()
     print(f"[INIT] Host SoC: {chip_name}")
@@ -176,6 +216,9 @@ def main():
                 # 6. Top CPU Processes
                 top_procs = get_top_processes(limit=6)
 
+                # 7. Top Network Connections
+                top_conns = get_network_connections(limit=6)
+
                 payload = {
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
@@ -189,7 +232,8 @@ def main():
                     "net_up": net_up_kb,
                     "chip": chip_name,
                     "uptime": uptime,
-                    "procs": top_procs
+                    "procs": top_procs,
+                    "conns": top_conns
                 }
 
                 # Drain stale data from previous cycle before sending new payload

@@ -19,7 +19,7 @@
 static lv_obj_t *root_parent = nullptr;
 static lv_obj_t *scr_dashboard = nullptr;
 static lv_obj_t *scr_processes = nullptr;
-static bool showing_processes = false;
+static lv_obj_t *scr_networks = nullptr;
 
 // Dashboard Header Widgets
 static lv_obj_t *lbl_chip = nullptr;
@@ -59,6 +59,12 @@ static lv_obj_t *bar_proc_cpus[MAX_TOP_PROCESSES];
 static lv_obj_t *lbl_proc_cpus[MAX_TOP_PROCESSES];
 static lv_obj_t *lbl_proc_rams[MAX_TOP_PROCESSES];
 
+// Network Screen Widgets
+static lv_obj_t *lbl_net_pnames[MAX_TOP_NET_CONNS];
+static lv_obj_t *lbl_net_pids[MAX_TOP_NET_CONNS];
+static lv_obj_t *lbl_net_remotes[MAX_TOP_NET_CONNS];
+static lv_obj_t *lbl_net_statuses[MAX_TOP_NET_CONNS];
+
 static lv_obj_t *create_card(lv_obj_t *parent, int x, int y, int w, int h) {
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_pos(card, x, y);
@@ -76,20 +82,30 @@ static void on_cpu_card_click(lv_event_t *e) {
     UIMacMonitor::showProcesses();
 }
 
+static void on_net_card_click(lv_event_t *e) {
+    UIMacMonitor::showNetConnections();
+}
+
 static void on_back_btn_click(lv_event_t *e) {
     UIMacMonitor::showDashboard();
 }
 
 void UIMacMonitor::showDashboard() {
-    showing_processes = false;
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_dashboard) lv_obj_clear_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::showProcesses() {
-    showing_processes = true;
     if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+    if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_clear_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+}
+
+void UIMacMonitor::showNetConnections() {
+    if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+    if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_networks) lv_obj_clear_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::create(lv_obj_t *parent) {
@@ -172,12 +188,6 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(lbl_cpu_temp, COLOR_ACCENT_CORAL, 0);
     lv_obj_set_style_text_font(lbl_cpu_temp, &lv_font_montserrat_12, 0);
     lv_obj_align(lbl_cpu_temp, LV_ALIGN_CENTER, 0, 22);
-
-    lv_obj_t *lbl_cpu_hint = lv_label_create(card_cpu);
-    lv_label_set_text(lbl_cpu_hint, "> TAP FOR TASKS <");
-    lv_obj_set_style_text_color(lbl_cpu_hint, COLOR_ACCENT_CYAN, 0);
-    lv_obj_set_style_text_font(lbl_cpu_hint, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_cpu_hint, LV_ALIGN_BOTTOM_MID, 0, 0);
 
     // 1.3 RAM / MEMORY CARD (Top Middle: 245 x 220)
     lv_obj_t *card_ram = create_card(scr_dashboard, 277, 66, 245, 220);
@@ -300,8 +310,11 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_color(bar_gpu_temp, COLOR_ACCENT_GREEN, LV_PART_INDICATOR);
     lv_obj_set_style_radius(bar_gpu_temp, 5, 0);
 
-    // 1.6 NETWORK TRAFFIC CARD (Bottom Right: 388 x 172)
+    // 1.6 NETWORK TRAFFIC CARD (Bottom Right: 388 x 172) - INTERACTIVE TOUCH BUTTON
     lv_obj_t *card_net = create_card(scr_dashboard, 400, 296, 388, 172);
+    lv_obj_add_flag(card_net, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card_net, on_net_card_click, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_border_color(card_net, COLOR_ACCENT_CYAN, LV_STATE_PRESSED);
 
     lv_obj_t *title_net = lv_label_create(card_net);
     lv_label_set_text(title_net, "NETWORK TRAFFIC");
@@ -469,6 +482,126 @@ void UIMacMonitor::create(lv_obj_t *parent) {
         lv_obj_set_style_text_font(lbl_proc_rams[i], &lv_font_montserrat_16, 0);
         lv_obj_set_pos(lbl_proc_rams[i], 670, 10);
     }
+
+    // =========================================================================
+    // 3. ACTIVE NETWORK CONNECTIONS CONTAINER (SCREEN 3)
+    // =========================================================================
+    scr_networks = lv_obj_create(parent);
+    lv_obj_set_size(scr_networks, 800, 480);
+    lv_obj_set_pos(scr_networks, 0, 0);
+    lv_obj_set_style_bg_color(scr_networks, COLOR_BG, 0);
+    lv_obj_set_style_border_width(scr_networks, 0, 0);
+    lv_obj_set_style_pad_all(scr_networks, 0, 0);
+    lv_obj_clear_flag(scr_networks, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN); // Initially hidden
+
+    // 3.1 NETWORK HEADER BAR
+    lv_obj_t *n_header = lv_obj_create(scr_networks);
+    lv_obj_set_pos(n_header, 12, 10);
+    lv_obj_set_size(n_header, 776, 46);
+    lv_obj_set_style_bg_color(n_header, COLOR_CARD, 0);
+    lv_obj_set_style_border_color(n_header, COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_border_width(n_header, 1, 0);
+    lv_obj_set_style_radius(n_header, 12, 0);
+    lv_obj_clear_flag(n_header, LV_OBJ_FLAG_SCROLLABLE);
+
+    // BACK BUTTON
+    lv_obj_t *btn_n_back = lv_btn_create(n_header);
+    lv_obj_set_size(btn_n_back, 110, 34);
+    lv_obj_align(btn_n_back, LV_ALIGN_LEFT_MID, 4, 0);
+    lv_obj_set_style_bg_color(btn_n_back, lv_color_hex(0x1E293B), 0);
+    lv_obj_set_style_border_color(btn_n_back, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_border_width(btn_n_back, 1, 0);
+    lv_obj_set_style_radius(btn_n_back, 8, 0);
+    lv_obj_add_event_cb(btn_n_back, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *lbl_n_back = lv_label_create(btn_n_back);
+    lv_label_set_text(lbl_n_back, "< BACK");
+    lv_obj_set_style_text_color(lbl_n_back, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_n_back, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_n_back, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_t *lbl_n_title = lv_label_create(n_header);
+    lv_label_set_text(lbl_n_title, "ACTIVE NETWORK CONNECTIONS (SOCKET MONITOR)");
+    lv_obj_set_style_text_color(lbl_n_title, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_n_title, &lv_font_montserrat_16, 0);
+    lv_obj_align(lbl_n_title, LV_ALIGN_CENTER, 30, 0);
+
+    // 3.2 TABLE COLUMN HEADER
+    lv_obj_t *col_n_bar = lv_obj_create(scr_networks);
+    lv_obj_set_pos(col_n_bar, 12, 62);
+    lv_obj_set_size(col_n_bar, 776, 26);
+    lv_obj_set_style_bg_opa(col_n_bar, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(col_n_bar, 0, 0);
+    lv_obj_set_style_pad_all(col_n_bar, 0, 0);
+    lv_obj_clear_flag(col_n_bar, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *th_n_name = lv_label_create(col_n_bar);
+    lv_label_set_text(th_n_name, "APPLICATION / PROCESS");
+    lv_obj_set_style_text_color(th_n_name, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_n_name, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_n_name, 50, 4);
+
+    lv_obj_t *th_n_pid = lv_label_create(col_n_bar);
+    lv_label_set_text(th_n_pid, "PID");
+    lv_obj_set_style_text_color(th_n_pid, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_n_pid, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_n_pid, 240, 4);
+
+    lv_obj_t *th_n_remote = lv_label_create(col_n_bar);
+    lv_label_set_text(th_n_remote, "REMOTE HOST / IP:PORT");
+    lv_obj_set_style_text_color(th_n_remote, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_n_remote, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_n_remote, 360, 4);
+
+    lv_obj_t *th_n_status = lv_label_create(col_n_bar);
+    lv_label_set_text(th_n_status, "STATUS");
+    lv_obj_set_style_text_color(th_n_status, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_n_status, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_n_status, 670, 4);
+
+    // 3.3 TOP 6 NETWORK CONNECTION ROWS
+    for (int i = 0; i < MAX_TOP_NET_CONNS; i++) {
+        int y_pos = 90 + i * 62;
+        lv_obj_t *row = create_card(scr_networks, 12, y_pos, 776, 56);
+
+        // Rank Badge
+        lv_obj_t *lbl_rank = lv_label_create(row);
+        char rank_str[8];
+        snprintf(rank_str, sizeof(rank_str), "#%d", i + 1);
+        lv_label_set_text(lbl_rank, rank_str);
+        lv_obj_set_style_text_color(lbl_rank, i < 3 ? COLOR_ACCENT_CYAN : COLOR_ACCENT_PURPLE, 0);
+        lv_obj_set_style_text_font(lbl_rank, &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_rank, 10, 10);
+
+        // Process Name
+        lbl_net_pnames[i] = lv_label_create(row);
+        lv_label_set_text(lbl_net_pnames[i], "--");
+        lv_obj_set_style_text_color(lbl_net_pnames[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_net_pnames[i], &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_net_pnames[i], 50, 10);
+
+        // PID
+        lbl_net_pids[i] = lv_label_create(row);
+        lv_label_set_text(lbl_net_pids[i], "PID: --");
+        lv_obj_set_style_text_color(lbl_net_pids[i], COLOR_TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(lbl_net_pids[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_net_pids[i], 240, 12);
+
+        // Remote Endpoint (IP:Port)
+        lbl_net_remotes[i] = lv_label_create(row);
+        lv_label_set_text(lbl_net_remotes[i], "--");
+        lv_obj_set_style_text_color(lbl_net_remotes[i], COLOR_ACCENT_CYAN, 0);
+        lv_obj_set_style_text_font(lbl_net_remotes[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_net_remotes[i], 360, 12);
+
+        // Status Badge
+        lbl_net_statuses[i] = lv_label_create(row);
+        lv_label_set_text(lbl_net_statuses[i], "--");
+        lv_obj_set_style_text_color(lbl_net_statuses[i], COLOR_ACCENT_GREEN, 0);
+        lv_obj_set_style_text_font(lbl_net_statuses[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_net_statuses[i], 670, 12);
+    }
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
@@ -572,7 +705,7 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         lv_label_set_text(lbl_net_up, buf);
     }
 
-    // TOP 6 PROCESSES UPDATE
+    // TOP 6 CPU PROCESSES UPDATE
     for (int i = 0; i < MAX_TOP_PROCESSES; i++) {
         if (i < m.process_count) {
             if (lbl_proc_names[i] && (!hasPrev || strcmp(m.top_processes[i].name, prev.top_processes[i].name) != 0)) {
@@ -601,6 +734,39 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
             if (bar_proc_cpus[i]) lv_bar_set_value(bar_proc_cpus[i], 0, LV_ANIM_OFF);
             if (lbl_proc_cpus[i]) lv_label_set_text(lbl_proc_cpus[i], "0.0%");
             if (lbl_proc_rams[i]) lv_label_set_text(lbl_proc_rams[i], "0.0%");
+        }
+    }
+
+    // TOP 6 NETWORK CONNECTIONS UPDATE
+    for (int i = 0; i < MAX_TOP_NET_CONNS; i++) {
+        if (i < m.net_conn_count) {
+            if (lbl_net_pnames[i] && (!hasPrev || strcmp(m.net_conns[i].name, prev.net_conns[i].name) != 0)) {
+                lv_label_set_text(lbl_net_pnames[i], m.net_conns[i].name);
+            }
+            if (lbl_net_pids[i] && (!hasPrev || m.net_conns[i].pid != prev.net_conns[i].pid)) {
+                if (m.net_conns[i].pid > 0) {
+                    snprintf(buf, sizeof(buf), "PID: %d", m.net_conns[i].pid);
+                } else {
+                    snprintf(buf, sizeof(buf), "PID: --");
+                }
+                lv_label_set_text(lbl_net_pids[i], buf);
+            }
+            if (lbl_net_remotes[i] && (!hasPrev || strcmp(m.net_conns[i].remote, prev.net_conns[i].remote) != 0)) {
+                lv_label_set_text(lbl_net_remotes[i], m.net_conns[i].remote);
+            }
+            if (lbl_net_statuses[i] && (!hasPrev || strcmp(m.net_conns[i].status, prev.net_conns[i].status) != 0)) {
+                lv_label_set_text(lbl_net_statuses[i], m.net_conns[i].status);
+                if (strstr(m.net_conns[i].status, "ESTAB")) {
+                    lv_obj_set_style_text_color(lbl_net_statuses[i], COLOR_ACCENT_GREEN, 0);
+                } else {
+                    lv_obj_set_style_text_color(lbl_net_statuses[i], COLOR_ACCENT_CYAN, 0);
+                }
+            }
+        } else {
+            if (lbl_net_pnames[i]) lv_label_set_text(lbl_net_pnames[i], "--");
+            if (lbl_net_pids[i]) lv_label_set_text(lbl_net_pids[i], "PID: --");
+            if (lbl_net_remotes[i]) lv_label_set_text(lbl_net_remotes[i], "--");
+            if (lbl_net_statuses[i]) lv_label_set_text(lbl_net_statuses[i], "--");
         }
     }
 
