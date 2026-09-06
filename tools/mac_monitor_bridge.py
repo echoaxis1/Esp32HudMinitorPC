@@ -96,9 +96,35 @@ def get_media_info():
     except Exception:
         return "No Media Playing"
 
+def get_top_processes(limit=6):
+    """Fetch top CPU-consuming processes."""
+    procs = []
+    for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+        try:
+            info = p.info
+            if info['cpu_percent'] is not None and info['name']:
+                procs.append(info)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
+    procs.sort(key=lambda x: x['cpu_percent'] or 0, reverse=True)
+    top = []
+    for p in procs[:limit]:
+        top.append({
+            "n": p['name'][:18],
+            "p": p['pid'],
+            "c": round(p['cpu_percent'] or 0.0, 1),
+            "m": round(p['memory_percent'] or 0.0, 1)
+        })
+    return top
+
 def main():
     chip_name = get_chip_name()
     print(f"[INIT] Host SoC: {chip_name}")
+
+    # Prime psutil process_iter
+    for _ in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+        pass
 
     last_net = psutil.net_io_counters()
     last_time = time.time()
@@ -147,6 +173,9 @@ def main():
                 # 5. Uptime
                 uptime = get_uptime()
 
+                # 6. Top CPU Processes
+                top_procs = get_top_processes(limit=6)
+
                 payload = {
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
@@ -159,7 +188,8 @@ def main():
                     "net_down": net_down_kb,
                     "net_up": net_up_kb,
                     "chip": chip_name,
-                    "uptime": uptime
+                    "uptime": uptime,
+                    "procs": top_procs
                 }
 
                 # Drain stale data from previous cycle before sending new payload

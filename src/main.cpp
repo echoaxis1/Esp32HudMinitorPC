@@ -49,6 +49,22 @@ void processMacMetricsJson(const char *jsonStr) {
         strcpy(latestMetrics.uptime, "--");
     }
 
+    // Top CPU Processes Parsing
+    latestMetrics.process_count = 0;
+    if (doc["procs"].is<JsonArray>()) {
+        for (JsonObject p : doc["procs"].as<JsonArray>()) {
+            if (latestMetrics.process_count >= MAX_TOP_PROCESSES) break;
+            int idx = latestMetrics.process_count;
+            const char *name = p["n"] | "--";
+            strncpy(latestMetrics.top_processes[idx].name, name, sizeof(latestMetrics.top_processes[idx].name) - 1);
+            latestMetrics.top_processes[idx].name[sizeof(latestMetrics.top_processes[idx].name) - 1] = '\0';
+            latestMetrics.top_processes[idx].pid = p["p"] | 0;
+            latestMetrics.top_processes[idx].cpu_pct = p["c"] | 0.0f;
+            latestMetrics.top_processes[idx].ram_pct = p["m"] | 0.0f;
+            latestMetrics.process_count++;
+        }
+    }
+
     metricsReady = true;
     Serial.println("ACK:OK");
 }
@@ -104,6 +120,13 @@ void setup() {
     strncpy(initMetrics.chip_name, "Apple Silicon", sizeof(initMetrics.chip_name));
     strncpy(initMetrics.uptime, "--", sizeof(initMetrics.uptime));
     strncpy(initMetrics.media_title, "Waiting for Mac Data Bridge...", sizeof(initMetrics.media_title));
+    initMetrics.process_count = 0;
+    for (int i = 0; i < MAX_TOP_PROCESSES; i++) {
+        strcpy(initMetrics.top_processes[i].name, "--");
+        initMetrics.top_processes[i].pid = 0;
+        initMetrics.top_processes[i].cpu_pct = 0.0f;
+        initMetrics.top_processes[i].ram_pct = 0.0f;
+    }
 
     UIMacMonitor::updateMetrics(initMetrics);
     lv_refr_now(NULL); // Initial draw only - safe because no serial data yet

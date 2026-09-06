@@ -5,9 +5,6 @@
 #include <esp_lcd_panel_vendor.h>
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_rgb.h>
-#include <TAMC_GT911.h>
-
-static TAMC_GT911 touch(I2C_MASTER_SDA_IO, I2C_MASTER_SCL_IO, TOUCH_PIN_INT, -1, LCD_H_RES, LCD_V_RES);
 static esp_lcd_panel_handle_t panel_handle = NULL;
 static lv_disp_draw_buf_t draw_buf;
 static lv_color_t *buf1 = nullptr;
@@ -18,18 +15,62 @@ static void IRAM_ATTR my_disp_flush(lv_disp_drv_t *disp_drv, const lv_area_t *ar
     lv_disp_flush_ready(disp_drv);
 }
 
+static uint8_t gt911_addr = 0x5D;
 static bool touch_initialized = false;
 
-static void my_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
-    if (!touch_initialized) {
-        data->state = LV_INDEV_STATE_REL;
-        return;
+static bool gt911_read(uint16_t *x, uint16_t *y) {
+    if (!touch_initialized) return false;
+
+    Wire.beginTransmission(gt911_addr);
+    Wire.write(0x81);
+    Wire.write(0x4E);
+    if (Wire.endTransmission() != 0) {
+        return false;
     }
-    touch.read();
-    if (touch.isTouched) {
+
+    Wire.requestFrom(gt911_addr, (uint8_t)1);
+    if (!Wire.available()) return false;
+    uint8_t pointInfo = Wire.read();
+    uint8_t bufferStatus = (pointInfo >> 7) & 1;
+    uint8_t touches = pointInfo & 0x0F;
+
+    bool touched = false;
+    if (bufferStatus == 1 && touches > 0) {
+        Wire.beginTransmission(gt911_addr);
+        Wire.write(0x81);
+        Wire.write(0x4F);
+        if (Wire.endTransmission() == 0) {
+            Wire.requestFrom(gt911_addr, (uint8_t)6);
+            if (Wire.available() >= 6) {
+                Wire.read(); // track id
+                uint8_t xl = Wire.read();
+                uint8_t xh = Wire.read();
+                uint8_t yl = Wire.read();
+                uint8_t yh = Wire.read();
+                Wire.read(); // size
+                *x = xl | (xh << 8);
+                *y = yl | (yh << 8);
+                touched = true;
+            }
+        }
+    }
+
+    // Clear buffer status flag in GT911
+    Wire.beginTransmission(gt911_addr);
+    Wire.write(0x81);
+    Wire.write(0x4E);
+    Wire.write(0x00);
+    Wire.endTransmission();
+
+    return touched;
+}
+
+static void my_touch_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data) {
+    uint16_t x = 0, y = 0;
+    if (gt911_read(&x, &y)) {
         data->state = LV_INDEV_STATE_PR;
-        data->point.x = touch.points[0].x;
-        data->point.y = touch.points[0].y;
+        data->point.x = x;
+        data->point.y = y;
     } else {
         data->state = LV_INDEV_STATE_REL;
     }
@@ -45,8 +86,22 @@ bool DisplayManager::init() {
     ioExpander.resetTouch();
     ioExpander.setBacklight(true);
 
-    // 3. Touch Controller bypassed for desk HUD monitor to prevent I2C bus lockups
-    touch_initialized = false;
+    // 3. Detect GT911 Touch Controller (Address 0x5D or 0x14)
+    Wire.beginTransmission(0x5D);
+    if (Wire.endTransmission() == 0) {
+        gt911_addr = 0x5D;
+        touch_initialized = true;
+        Serial.println("GT911 touch controller detected at 0x5D");
+    } else {
+        Wire.beginTransmission(0x14);
+        if (Wire.endTransmission() == 0) {
+            gt911_addr = 0x14;
+            touch_initialized = true;
+            Serial.println("GT911 touch controller detected at 0x14");
+        } else {
+            Serial.println("GT911 touch controller not responding on I2C bus");
+        }
+    }
 
     // 4. Configure ESP32 RGB LCD Panel
     esp_lcd_rgb_panel_config_t panel_conf = {
@@ -141,6 +196,13 @@ bool DisplayManager::init() {
     disp_drv.draw_buf = &draw_buf;
     disp_drv.direct_mode = 0;
     lv_disp_drv_register(&disp_drv);
+
+    // Register Touch Input Device Driver
+    static lv_indev_drv_t indev_drv;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_POINTER;
+    indev_drv.read_cb = my_touch_read;
+    lv_indev_drv_register(&indev_drv);
 
     Serial.println("Display initialized successfully.");
     return true;

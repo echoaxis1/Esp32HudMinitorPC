@@ -1,5 +1,7 @@
 #include "ui_mac_monitor.h"
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
 
 // Color Scheme (Futuristic Slate & Cyberpunk Neon)
 #define COLOR_BG          lv_color_hex(0x070B12)
@@ -13,38 +15,49 @@
 #define COLOR_TEXT_MAIN   lv_color_hex(0xF8FAFC)
 #define COLOR_TEXT_MUTED  lv_color_hex(0x64748B)
 
-// Root container
-static lv_obj_t *root_scr = nullptr;
+// Screen Containers
+static lv_obj_t *root_parent = nullptr;
+static lv_obj_t *scr_dashboard = nullptr;
+static lv_obj_t *scr_processes = nullptr;
+static bool showing_processes = false;
 
-// Header Widgets
+// Dashboard Header Widgets
 static lv_obj_t *lbl_chip = nullptr;
 static lv_obj_t *lbl_uptime = nullptr;
 static lv_obj_t *lbl_clock = nullptr;
 
-// CPU Widgets
+// Dashboard CPU Widgets
+static lv_obj_t *card_cpu = nullptr;
 static lv_obj_t *arc_cpu = nullptr;
 static lv_obj_t *lbl_cpu_val = nullptr;
 static lv_obj_t *lbl_cpu_temp = nullptr;
 
-// RAM Widgets
+// Dashboard RAM Widgets
 static lv_obj_t *arc_ram = nullptr;
 static lv_obj_t *lbl_ram_val = nullptr;
 static lv_obj_t *lbl_ram_sub = nullptr;
 
-// DISK Widgets (Top-Right Card)
+// Dashboard DISK Widgets (Top-Right Card)
 static lv_obj_t *bar_disk = nullptr;
 static lv_obj_t *lbl_disk_val = nullptr;
 static lv_obj_t *lbl_disk_sub = nullptr;
 
-// THERMAL Widgets (Bottom-Left Card)
+// Dashboard THERMAL Widgets (Bottom-Left Card)
 static lv_obj_t *lbl_cpu_temp_val = nullptr;
 static lv_obj_t *lbl_gpu_temp_val = nullptr;
 static lv_obj_t *bar_cpu_temp = nullptr;
 static lv_obj_t *bar_gpu_temp = nullptr;
 
-// NETWORK Widgets (Bottom-Right Card)
+// Dashboard NETWORK Widgets (Bottom-Right Card)
 static lv_obj_t *lbl_net_down = nullptr;
 static lv_obj_t *lbl_net_up = nullptr;
+
+// Process Screen Widgets
+static lv_obj_t *lbl_proc_names[MAX_TOP_PROCESSES];
+static lv_obj_t *lbl_proc_pids[MAX_TOP_PROCESSES];
+static lv_obj_t *bar_proc_cpus[MAX_TOP_PROCESSES];
+static lv_obj_t *lbl_proc_cpus[MAX_TOP_PROCESSES];
+static lv_obj_t *lbl_proc_rams[MAX_TOP_PROCESSES];
 
 static lv_obj_t *create_card(lv_obj_t *parent, int x, int y, int w, int h) {
     lv_obj_t *card = lv_obj_create(parent);
@@ -59,14 +72,43 @@ static lv_obj_t *create_card(lv_obj_t *parent, int x, int y, int w, int h) {
     return card;
 }
 
+static void on_cpu_card_click(lv_event_t *e) {
+    UIMacMonitor::showProcesses();
+}
+
+static void on_back_btn_click(lv_event_t *e) {
+    UIMacMonitor::showDashboard();
+}
+
+void UIMacMonitor::showDashboard() {
+    showing_processes = false;
+    if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_dashboard) lv_obj_clear_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+}
+
+void UIMacMonitor::showProcesses() {
+    showing_processes = true;
+    if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+    if (scr_processes) lv_obj_clear_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+}
+
 void UIMacMonitor::create(lv_obj_t *parent) {
-    root_scr = parent;
+    root_parent = parent;
     lv_obj_set_style_bg_color(parent, COLOR_BG, 0);
 
-    // ==========================================
-    // 1. TOP HEADER BAR (800 x 46)
-    // ==========================================
-    lv_obj_t *header = lv_obj_create(parent);
+    // =========================================================================
+    // 1. DASHBOARD CONTAINER (SCREEN 1)
+    // =========================================================================
+    scr_dashboard = lv_obj_create(parent);
+    lv_obj_set_size(scr_dashboard, 800, 480);
+    lv_obj_set_pos(scr_dashboard, 0, 0);
+    lv_obj_set_style_bg_color(scr_dashboard, COLOR_BG, 0);
+    lv_obj_set_style_border_width(scr_dashboard, 0, 0);
+    lv_obj_set_style_pad_all(scr_dashboard, 0, 0);
+    lv_obj_clear_flag(scr_dashboard, LV_OBJ_FLAG_SCROLLABLE);
+
+    // 1.1 TOP HEADER BAR (800 x 46)
+    lv_obj_t *header = lv_obj_create(scr_dashboard);
     lv_obj_set_pos(header, 12, 10);
     lv_obj_set_size(header, 776, 46);
     lv_obj_set_style_bg_color(header, COLOR_CARD, 0);
@@ -93,10 +135,11 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_16, 0);
     lv_obj_align(lbl_clock, LV_ALIGN_RIGHT_MID, -8, 0);
 
-    // ==========================================
-    // 2. CPU CARD (Top Left: 245 x 220)
-    // ==========================================
-    lv_obj_t *card_cpu = create_card(parent, 12, 66, 245, 220);
+    // 1.2 CPU CARD (Top Left: 245 x 220) - INTERACTIVE TOUCH BUTTON
+    card_cpu = create_card(scr_dashboard, 12, 66, 245, 220);
+    lv_obj_add_flag(card_cpu, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card_cpu, on_cpu_card_click, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_border_color(card_cpu, COLOR_ACCENT_CYAN, LV_STATE_PRESSED);
 
     lv_obj_t *title_cpu = lv_label_create(card_cpu);
     lv_label_set_text(title_cpu, "CPU UTILIZATION");
@@ -105,7 +148,7 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_align(title_cpu, LV_ALIGN_TOP_LEFT, 0, 0);
 
     arc_cpu = lv_arc_create(card_cpu);
-    lv_obj_set_size(arc_cpu, 140, 140);
+    lv_obj_set_size(arc_cpu, 130, 130);
     lv_arc_set_rotation(arc_cpu, 135);
     lv_arc_set_bg_angles(arc_cpu, 0, 270);
     lv_arc_set_range(arc_cpu, 0, 100);
@@ -116,24 +159,28 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_arc_width(arc_cpu, 12, LV_PART_INDICATOR);
     lv_obj_remove_style(arc_cpu, NULL, LV_PART_KNOB);
     lv_obj_clear_flag(arc_cpu, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_align(arc_cpu, LV_ALIGN_CENTER, 0, 12);
+    lv_obj_align(arc_cpu, LV_ALIGN_CENTER, 0, 4);
 
     lbl_cpu_val = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_val, "0.0%");
     lv_obj_set_style_text_color(lbl_cpu_val, COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_24, 0);
-    lv_obj_align(lbl_cpu_val, LV_ALIGN_CENTER, 0, 6);
+    lv_obj_align(lbl_cpu_val, LV_ALIGN_CENTER, 0, -2);
 
     lbl_cpu_temp = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_temp, "Core: -- C");
     lv_obj_set_style_text_color(lbl_cpu_temp, COLOR_ACCENT_CORAL, 0);
     lv_obj_set_style_text_font(lbl_cpu_temp, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_cpu_temp, LV_ALIGN_CENTER, 0, 28);
+    lv_obj_align(lbl_cpu_temp, LV_ALIGN_CENTER, 0, 22);
 
-    // ==========================================
-    // 3. RAM / MEMORY CARD (Top Middle: 245 x 220)
-    // ==========================================
-    lv_obj_t *card_ram = create_card(parent, 277, 66, 245, 220);
+    lv_obj_t *lbl_cpu_hint = lv_label_create(card_cpu);
+    lv_label_set_text(lbl_cpu_hint, "> TAP FOR TASKS <");
+    lv_obj_set_style_text_color(lbl_cpu_hint, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_cpu_hint, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_cpu_hint, LV_ALIGN_BOTTOM_MID, 0, 0);
+
+    // 1.3 RAM / MEMORY CARD (Top Middle: 245 x 220)
+    lv_obj_t *card_ram = create_card(scr_dashboard, 277, 66, 245, 220);
 
     lv_obj_t *title_ram = lv_label_create(card_ram);
     lv_label_set_text(title_ram, "UNIFIED MEMORY");
@@ -142,7 +189,7 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_align(title_ram, LV_ALIGN_TOP_LEFT, 0, 0);
 
     arc_ram = lv_arc_create(card_ram);
-    lv_obj_set_size(arc_ram, 140, 140);
+    lv_obj_set_size(arc_ram, 130, 130);
     lv_arc_set_rotation(arc_ram, 135);
     lv_arc_set_bg_angles(arc_ram, 0, 270);
     lv_arc_set_range(arc_ram, 0, 100);
@@ -153,24 +200,22 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_arc_width(arc_ram, 12, LV_PART_INDICATOR);
     lv_obj_remove_style(arc_ram, NULL, LV_PART_KNOB);
     lv_obj_clear_flag(arc_ram, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_align(arc_ram, LV_ALIGN_CENTER, 0, 12);
+    lv_obj_align(arc_ram, LV_ALIGN_CENTER, 0, 4);
 
     lbl_ram_val = lv_label_create(card_ram);
     lv_label_set_text(lbl_ram_val, "0.0%");
     lv_obj_set_style_text_color(lbl_ram_val, COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_text_font(lbl_ram_val, &lv_font_montserrat_24, 0);
-    lv_obj_align(lbl_ram_val, LV_ALIGN_CENTER, 0, 4);
+    lv_obj_align(lbl_ram_val, LV_ALIGN_CENTER, 0, -2);
 
     lbl_ram_sub = lv_label_create(card_ram);
     lv_label_set_text(lbl_ram_sub, "0.0 / 16.0 GB");
     lv_obj_set_style_text_color(lbl_ram_sub, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ram_sub, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_ram_sub, LV_ALIGN_CENTER, 0, 28);
+    lv_obj_align(lbl_ram_sub, LV_ALIGN_CENTER, 0, 22);
 
-    // ==========================================
-    // 4. STORAGE (SSD) CARD (Top Right: 246 x 220)
-    // ==========================================
-    lv_obj_t *card_disk = create_card(parent, 542, 66, 246, 220);
+    // 1.4 STORAGE (SSD) CARD (Top Right: 246 x 220)
+    lv_obj_t *card_disk = create_card(scr_dashboard, 542, 66, 246, 220);
 
     lv_obj_t *title_disk = lv_label_create(card_disk);
     lv_label_set_text(title_disk, "STORAGE (SSD)");
@@ -204,10 +249,8 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_disk_info, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(lbl_disk_info, 0, 130);
 
-    // ==========================================
-    // 5. THERMAL SENSORS CARD (Bottom Left: 378 x 172)
-    // ==========================================
-    lv_obj_t *card_thermal = create_card(parent, 12, 296, 378, 172);
+    // 1.5 THERMAL SENSORS CARD (Bottom Left: 378 x 172)
+    lv_obj_t *card_thermal = create_card(scr_dashboard, 12, 296, 378, 172);
 
     lv_obj_t *title_thermal = lv_label_create(card_thermal);
     lv_label_set_text(title_thermal, "SOC THERMAL SENSORS");
@@ -236,7 +279,7 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_color(bar_cpu_temp, COLOR_ACCENT_CORAL, LV_PART_INDICATOR);
     lv_obj_set_style_radius(bar_cpu_temp, 5, 0);
 
-    // GPU Temp Row
+    // Graphic Core Temp Row
     lv_obj_t *lbl_gpu_t_title = lv_label_create(card_thermal);
     lv_label_set_text(lbl_gpu_t_title, "GRAPHIC CORE");
     lv_obj_set_style_text_color(lbl_gpu_t_title, COLOR_TEXT_MUTED, 0);
@@ -257,10 +300,8 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_bg_color(bar_gpu_temp, COLOR_ACCENT_GREEN, LV_PART_INDICATOR);
     lv_obj_set_style_radius(bar_gpu_temp, 5, 0);
 
-    // ==========================================
-    // 6. NETWORK TRAFFIC CARD (Bottom Right: 388 x 172)
-    // ==========================================
-    lv_obj_t *card_net = create_card(parent, 400, 296, 388, 172);
+    // 1.6 NETWORK TRAFFIC CARD (Bottom Right: 388 x 172)
+    lv_obj_t *card_net = create_card(scr_dashboard, 400, 296, 388, 172);
 
     lv_obj_t *title_net = lv_label_create(card_net);
     lv_label_set_text(title_net, "NETWORK TRAFFIC");
@@ -294,15 +335,141 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_net_up, &lv_font_montserrat_20, 0);
     lv_obj_set_pos(lbl_net_up, 180, 50);
 
-    // Interface Info
     lv_obj_t *lbl_net_if = lv_label_create(card_net);
     lv_label_set_text(lbl_net_if, "Active Interface: en0 (Wi-Fi / Ethernet)");
     lv_obj_set_style_text_color(lbl_net_if, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_net_if, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(lbl_net_if, 0, 100);
-}
 
-#include <math.h>
+    // =========================================================================
+    // 2. TOP PROCESSES CONTAINER (SCREEN 2)
+    // =========================================================================
+    scr_processes = lv_obj_create(parent);
+    lv_obj_set_size(scr_processes, 800, 480);
+    lv_obj_set_pos(scr_processes, 0, 0);
+    lv_obj_set_style_bg_color(scr_processes, COLOR_BG, 0);
+    lv_obj_set_style_border_width(scr_processes, 0, 0);
+    lv_obj_set_style_pad_all(scr_processes, 0, 0);
+    lv_obj_clear_flag(scr_processes, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN); // Initially hidden
+
+    // 2.1 PROCESS HEADER BAR
+    lv_obj_t *p_header = lv_obj_create(scr_processes);
+    lv_obj_set_pos(p_header, 12, 10);
+    lv_obj_set_size(p_header, 776, 46);
+    lv_obj_set_style_bg_color(p_header, COLOR_CARD, 0);
+    lv_obj_set_style_border_color(p_header, COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_border_width(p_header, 1, 0);
+    lv_obj_set_style_radius(p_header, 12, 0);
+    lv_obj_clear_flag(p_header, LV_OBJ_FLAG_SCROLLABLE);
+
+    // BACK BUTTON
+    lv_obj_t *btn_back = lv_btn_create(p_header);
+    lv_obj_set_size(btn_back, 110, 34);
+    lv_obj_align(btn_back, LV_ALIGN_LEFT_MID, 4, 0);
+    lv_obj_set_style_bg_color(btn_back, lv_color_hex(0x1E293B), 0);
+    lv_obj_set_style_border_color(btn_back, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_border_width(btn_back, 1, 0);
+    lv_obj_set_style_radius(btn_back, 8, 0);
+    lv_obj_add_event_cb(btn_back, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *lbl_back = lv_label_create(btn_back);
+    lv_label_set_text(lbl_back, "< BACK");
+    lv_obj_set_style_text_color(lbl_back, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_back, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_back, LV_ALIGN_CENTER, 0, 0);
+
+    lv_obj_t *lbl_p_title = lv_label_create(p_header);
+    lv_label_set_text(lbl_p_title, "TOP CPU PROCESSES (ACTIVITY MONITOR)");
+    lv_obj_set_style_text_color(lbl_p_title, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_p_title, &lv_font_montserrat_16, 0);
+    lv_obj_align(lbl_p_title, LV_ALIGN_CENTER, 30, 0);
+
+    // 2.2 TABLE COLUMN HEADER
+    lv_obj_t *col_bar = lv_obj_create(scr_processes);
+    lv_obj_set_pos(col_bar, 12, 62);
+    lv_obj_set_size(col_bar, 776, 26);
+    lv_obj_set_style_bg_opa(col_bar, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(col_bar, 0, 0);
+    lv_obj_set_style_pad_all(col_bar, 0, 0);
+    lv_obj_clear_flag(col_bar, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *th_name = lv_label_create(col_bar);
+    lv_label_set_text(th_name, "APPLICATION / PROCESS");
+    lv_obj_set_style_text_color(th_name, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_name, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_name, 50, 4);
+
+    lv_obj_t *th_pid = lv_label_create(col_bar);
+    lv_label_set_text(th_pid, "PID");
+    lv_obj_set_style_text_color(th_pid, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_pid, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_pid, 300, 4);
+
+    lv_obj_t *th_cpu = lv_label_create(col_bar);
+    lv_label_set_text(th_cpu, "CPU LOAD");
+    lv_obj_set_style_text_color(th_cpu, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_cpu, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_cpu, 430, 4);
+
+    lv_obj_t *th_ram = lv_label_create(col_bar);
+    lv_label_set_text(th_ram, "RAM %");
+    lv_obj_set_style_text_color(th_ram, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_ram, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_ram, 670, 4);
+
+    // 2.3 TOP 6 PROCESS CARDS
+    for (int i = 0; i < MAX_TOP_PROCESSES; i++) {
+        int y_pos = 90 + i * 62;
+        lv_obj_t *row = create_card(scr_processes, 12, y_pos, 776, 56);
+
+        // Rank Badge
+        lv_obj_t *lbl_rank = lv_label_create(row);
+        char rank_str[8];
+        snprintf(rank_str, sizeof(rank_str), "#%d", i + 1);
+        lv_label_set_text(lbl_rank, rank_str);
+        lv_obj_set_style_text_color(lbl_rank, i == 0 ? COLOR_ACCENT_CORAL : (i < 3 ? COLOR_ACCENT_AMBER : COLOR_ACCENT_CYAN), 0);
+        lv_obj_set_style_text_font(lbl_rank, &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_rank, 10, 10);
+
+        // Process Name
+        lbl_proc_names[i] = lv_label_create(row);
+        lv_label_set_text(lbl_proc_names[i], "--");
+        lv_obj_set_style_text_color(lbl_proc_names[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_proc_names[i], &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_proc_names[i], 50, 10);
+
+        // PID
+        lbl_proc_pids[i] = lv_label_create(row);
+        lv_label_set_text(lbl_proc_pids[i], "PID: --");
+        lv_obj_set_style_text_color(lbl_proc_pids[i], COLOR_TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(lbl_proc_pids[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_proc_pids[i], 300, 12);
+
+        // CPU Usage Bar
+        bar_proc_cpus[i] = lv_bar_create(row);
+        lv_obj_set_size(bar_proc_cpus[i], 120, 12);
+        lv_obj_set_pos(bar_proc_cpus[i], 430, 16);
+        lv_bar_set_range(bar_proc_cpus[i], 0, 100);
+        lv_obj_set_style_bg_color(bar_proc_cpus[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(bar_proc_cpus[i], COLOR_ACCENT_CORAL, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(bar_proc_cpus[i], 6, 0);
+
+        // CPU Label
+        lbl_proc_cpus[i] = lv_label_create(row);
+        lv_label_set_text(lbl_proc_cpus[i], "0.0%");
+        lv_obj_set_style_text_color(lbl_proc_cpus[i], COLOR_ACCENT_CORAL, 0);
+        lv_obj_set_style_text_font(lbl_proc_cpus[i], &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_proc_cpus[i], 560, 10);
+
+        // RAM Label
+        lbl_proc_rams[i] = lv_label_create(row);
+        lv_label_set_text(lbl_proc_rams[i], "0.0%");
+        lv_obj_set_style_text_color(lbl_proc_rams[i], COLOR_ACCENT_PURPLE, 0);
+        lv_obj_set_style_text_font(lbl_proc_rams[i], &lv_font_montserrat_16, 0);
+        lv_obj_set_pos(lbl_proc_rams[i], 670, 10);
+    }
+}
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     char buf[64];
@@ -403,6 +570,38 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
             snprintf(buf, sizeof(buf), "%.1f KB/s", m.net_up_kb);
         }
         lv_label_set_text(lbl_net_up, buf);
+    }
+
+    // TOP 6 PROCESSES UPDATE
+    for (int i = 0; i < MAX_TOP_PROCESSES; i++) {
+        if (i < m.process_count) {
+            if (lbl_proc_names[i] && (!hasPrev || strcmp(m.top_processes[i].name, prev.top_processes[i].name) != 0)) {
+                lv_label_set_text(lbl_proc_names[i], m.top_processes[i].name);
+            }
+            if (lbl_proc_pids[i] && (!hasPrev || m.top_processes[i].pid != prev.top_processes[i].pid)) {
+                snprintf(buf, sizeof(buf), "PID: %d", m.top_processes[i].pid);
+                lv_label_set_text(lbl_proc_pids[i], buf);
+            }
+            if (bar_proc_cpus[i] && (!hasPrev || (int)m.top_processes[i].cpu_pct != (int)prev.top_processes[i].cpu_pct)) {
+                int c_val = (int)m.top_processes[i].cpu_pct;
+                if (c_val > 100) c_val = 100;
+                lv_bar_set_value(bar_proc_cpus[i], c_val, LV_ANIM_OFF);
+            }
+            if (lbl_proc_cpus[i] && (!hasPrev || fabsf(m.top_processes[i].cpu_pct - prev.top_processes[i].cpu_pct) >= 0.1f)) {
+                snprintf(buf, sizeof(buf), "%.1f%%", m.top_processes[i].cpu_pct);
+                lv_label_set_text(lbl_proc_cpus[i], buf);
+            }
+            if (lbl_proc_rams[i] && (!hasPrev || fabsf(m.top_processes[i].ram_pct - prev.top_processes[i].ram_pct) >= 0.1f)) {
+                snprintf(buf, sizeof(buf), "%.1f%%", m.top_processes[i].ram_pct);
+                lv_label_set_text(lbl_proc_rams[i], buf);
+            }
+        } else {
+            if (lbl_proc_names[i]) lv_label_set_text(lbl_proc_names[i], "--");
+            if (lbl_proc_pids[i]) lv_label_set_text(lbl_proc_pids[i], "PID: --");
+            if (bar_proc_cpus[i]) lv_bar_set_value(bar_proc_cpus[i], 0, LV_ANIM_OFF);
+            if (lbl_proc_cpus[i]) lv_label_set_text(lbl_proc_cpus[i], "0.0%");
+            if (lbl_proc_rams[i]) lv_label_set_text(lbl_proc_rams[i], "0.0%");
+        }
     }
 
     prev = m;
