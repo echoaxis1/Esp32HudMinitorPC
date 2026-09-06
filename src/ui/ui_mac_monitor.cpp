@@ -238,7 +238,7 @@ void UIMacMonitor::create(lv_obj_t *parent) {
 
     // GPU Temp Row
     lv_obj_t *lbl_gpu_t_title = lv_label_create(card_thermal);
-    lv_label_set_text(lbl_gpu_t_title, "GPU CORE");
+    lv_label_set_text(lbl_gpu_t_title, "GRAPHIC CORE");
     lv_obj_set_style_text_color(lbl_gpu_t_title, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_gpu_t_title, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(lbl_gpu_t_title, 0, 78);
