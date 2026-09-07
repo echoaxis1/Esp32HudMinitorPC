@@ -16,7 +16,7 @@
 #define COLOR_TEXT_MUTED  lv_color_hex(0x64748B)
 
 // Screen Containers
-extern const lv_font_t font_clock_180;
+LV_FONT_DECLARE(font_clock_160);
 
 static lv_obj_t *root_parent = nullptr;
 static lv_obj_t *scr_dashboard = nullptr;
@@ -880,19 +880,19 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(scr_screensaver, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    // 5.1 Ultra Huge Time Label (180px SF Compact Rounded)
+    // 5.1 Ultra Huge Time Label (160px SF Compact Rounded)
     lbl_ss_time = lv_label_create(scr_screensaver);
     lv_label_set_text(lbl_ss_time, "00:00");
     lv_obj_set_style_text_color(lbl_ss_time, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_set_style_text_font(lbl_ss_time, &font_clock_180, 0);
-    lv_obj_set_pos(lbl_ss_time, 40, 70);
+    lv_obj_set_style_text_font(lbl_ss_time, &font_clock_160, 0);
+    lv_obj_set_pos(lbl_ss_time, 45, 80);
     lv_obj_add_flag(lbl_ss_time, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_time, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
     // 5.2 Golden Accent Sun Circle (next to time)
     ss_sun = lv_obj_create(scr_screensaver);
     lv_obj_set_size(ss_sun, 64, 64);
-    lv_obj_set_pos(ss_sun, 520, 130);
+    lv_obj_set_pos(ss_sun, 500, 125);
     lv_obj_set_style_bg_color(ss_sun, lv_color_hex(0xFFB800), 0);
     lv_obj_set_style_bg_opa(ss_sun, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(ss_sun, 0, 0);
@@ -915,9 +915,9 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     // 5.4 Indonesian Full Date (Directly beneath the huge clock)
     lbl_ss_date = lv_label_create(scr_screensaver);
     lv_label_set_text(lbl_ss_date, "Senin, 01 Januari 2026");
-    lv_obj_set_style_text_color(lbl_ss_date, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_color(lbl_ss_date, lv_color_hex(0xE2E8F0), 0);
     lv_obj_set_style_text_font(lbl_ss_date, &lv_font_montserrat_28, 0);
-    lv_obj_set_pos(lbl_ss_date, 45, 290);
+    lv_obj_set_pos(lbl_ss_date, 45, 275);
     lv_obj_add_flag(lbl_ss_date, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_date, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
@@ -926,13 +926,13 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_label_set_text(lbl_ss_status, "[ GRAPHIC CORE INACTIVE • STANDBY ]");
     lv_obj_set_style_text_color(lbl_ss_status, COLOR_ACCENT_AMBER, 0);
     lv_obj_set_style_text_font(lbl_ss_status, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_ss_status, 45, 375);
+    lv_obj_set_pos(lbl_ss_status, 45, 370);
 
     lbl_ss_sub = lv_label_create(scr_screensaver);
     lv_label_set_text(lbl_ss_sub, "Sentuh layar untuk membuka HUD Monitor");
     lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_ss_sub, 45, 410);
+    lv_obj_set_pos(lbl_ss_sub, 45, 405);
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
