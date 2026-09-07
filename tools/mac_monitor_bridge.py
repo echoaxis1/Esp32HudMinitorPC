@@ -333,28 +333,30 @@ def get_top_processes(limit=6):
 def get_network_connections(limit=6):
     """Fetch active network socket connections per process."""
     conns = []
-    for p in psutil.process_iter(['pid', 'name']):
+    my_uid = os.getuid()
+    for p in psutil.process_iter(['pid', 'name', 'uids']):
         try:
-            c_list = p.net_connections(kind='inet')
-            if c_list:
-                pname = p.info['name']
-                pid = p.info['pid']
-                for c in c_list:
-                    if c.raddr:
-                        ip = c.raddr.ip
-                        port = c.raddr.port
-                        is_local = ip.startswith('127.') or ip == '::1' or ip.startswith('fe80')
-                        r_str = f"{ip}:{port}"
-                        status = c.status if c.status else "ESTAB"
-                        if status == "ESTABLISHED":
-                            status = "ESTAB"
-                        conns.append({
-                            "n": pname[:16],
-                            "p": pid,
-                            "r": r_str[:22],
-                            "s": status[:8],
-                            "_loc": 1 if is_local else 0
-                        })
+            if p.info['uids'] and p.info['uids'].real == my_uid:
+                c_list = p.net_connections(kind='inet')
+                if c_list:
+                    pname = p.info['name']
+                    pid = p.info['pid']
+                    for c in c_list:
+                        if c.raddr:
+                            ip = c.raddr.ip
+                            port = c.raddr.port
+                            is_local = ip.startswith('127.') or ip == '::1' or ip.startswith('fe80')
+                            r_str = f"{ip}:{port}"
+                            status = c.status if c.status else "ESTAB"
+                            if status == "ESTABLISHED":
+                                status = "ESTAB"
+                            conns.append({
+                                "n": pname[:16],
+                                "p": pid,
+                                "r": r_str[:22],
+                                "s": status[:8],
+                                "_loc": 1 if is_local else 0
+                            })
         except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess):
             pass
 
@@ -394,24 +396,20 @@ def main():
             ser.port = port
             ser.baudrate = 115200
             ser.timeout = 1
-            ser.dtr = None
-            ser.rts = None
+            ser.write_timeout = 2
+            ser.dtr = True
+            ser.rts = True
             ser.open()
-            time.sleep(1.0)
+            time.sleep(0.5)
             ser.reset_input_buffer()
+            ser.reset_output_buffer()
 
             while True:
-                # 1. CPU & RAM
                 cpu_pct = psutil.cpu_percent(interval=None)
                 ram_pct, ram_used, ram_total = get_macos_memory()
-
-                # 2. Temperature (CPU & GPU SoC)
                 cpu_temp, gpu_temp = get_temperatures()
-
-                # 3. Disk (macOS APFS System Settings match)
                 disk_pct, disk_free_gb, disk_used_gb, disk_total_gb, all_disks = get_macos_storage()
 
-                # 4. Network Rate & Cumulative Stats
                 now = time.time()
                 dt = now - last_time if (now - last_time) > 0 else 1.0
                 curr_net = psutil.net_io_counters()
@@ -442,7 +440,6 @@ def main():
                 except Exception:
                     pass
 
-                # 5. Uptime & Indonesian Clock Time/Date
                 uptime = get_uptime()
                 now_dt = datetime.datetime.now()
                 time_str = now_dt.strftime("%H:%M")
@@ -457,15 +454,10 @@ def main():
                 month_name = INDONESIAN_MONTHS[now_dt.month]
                 date_str = f"{day_name}, {now_dt.day:02d} {month_name} {now_dt.year}"
 
-                # 6. Top CPU Processes
-                top_procs = get_top_processes(limit=6)
-
-                # 7. Top Network Connections
-                top_conns = get_network_connections(limit=3)
-
-                # 8. Real-time Weather
+                top_procs = get_top_processes(limit=4)
+                top_conns = get_network_connections(limit=2)
                 weather = get_weather_info()
-
+                rems_val = get_macos_reminders()[:100]
                 payload = {
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
@@ -486,7 +478,7 @@ def main():
                     "time": time_str,
                     "date": date_str,
                     "day_idx": day_idx,
-                    "rem": get_macos_reminders()[:250],
+                    "rem": rems_val,
                     "w_temp": weather.get("temp", 30.0),
                     "w_code": weather.get("code", 0),
                     "w_day": weather.get("day", 1),
@@ -494,30 +486,24 @@ def main():
                     "w_loc": weather.get("loc", "Bekasi"),
                     "procs": top_procs,
                     "conns": top_conns,
-                    "disks": all_disks
+                    "disks": all_disks[:2]
                 }
 
-                # Drain stale data from previous cycle before sending new payload
-                if ser.in_waiting > 0:
-                    ser.read(ser.in_waiting)
-
-                # Use compact JSON (no spaces) to keep payload under USB CDC buffer limit
                 line = json.dumps(payload, separators=(',', ':')) + "\n"
                 ser.write(line.encode("utf-8"))
-                ser.flush()
 
-                # Wait for ESP32 to process and respond
-                time.sleep(0.5)
+                # Read response from ESP32 if available
+                time.sleep(0.1)
                 ack = ""
                 if ser.in_waiting > 0:
                     ack = ser.read(ser.in_waiting).decode("utf-8", errors="ignore").strip()
 
-                print(f"[STREAM] CPU: {payload['cpu']}% | Temp: {payload['cpu_temp']}C | RAM: {payload['ram_pct']}% | Uptime: {payload['uptime']} | ACK: {ack}")
+                print(f"[STREAM] CPU: {payload['cpu']}% | Temp: {payload['cpu_temp']}C | RAM: {payload['ram_pct']}% | Uptime: {payload['uptime']} | ACK: {ack}", flush=True)
 
-                time.sleep(0.5)
+                time.sleep(0.9)
 
-        except serial.SerialException as e:
-            print(f"[DISCONNECTED] Koneksi serial terputus: {e}")
+        except (serial.SerialException, serial.SerialTimeoutException) as e:
+            print(f"[DISCONNECTED] Masalah koneksi serial: {e}")
             time.sleep(2)
         except KeyboardInterrupt:
             print("\nProgram dihentikan oleh pengguna.")
