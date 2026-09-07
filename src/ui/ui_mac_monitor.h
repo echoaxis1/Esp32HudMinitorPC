@@ -53,6 +53,13 @@ struct MacSystemMetrics {
     char reminders[256];
     int day_idx;
     
+    // Real-time Weather
+    float weather_temp;
+    int weather_code;
+    int weather_is_day;
+    char weather_text[28];
+    char weather_loc[28];
+    
     uint8_t process_count;
     MacProcessInfo top_processes[MAX_TOP_PROCESSES];
 

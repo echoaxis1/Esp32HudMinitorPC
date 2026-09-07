@@ -58,6 +58,87 @@ def get_macos_reminders():
         threading.Thread(target=_worker, daemon=True).start()
     return _cached_reminders
 
+_cached_weather = {
+    "temp": 30.0,
+    "code": 0,
+    "day": 1,
+    "text": "Cerah",
+    "loc": "Bekasi"
+}
+_last_weather_fetch = 0
+_cached_lat = None
+_cached_lon = None
+_cached_city = "Bekasi"
+
+WMO_WEATHER_MAP = {
+    0: "Cerah",
+    1: "Cerah Berawan",
+    2: "Sebagian Berawan",
+    3: "Mendung",
+    45: "Berkabut",
+    48: "Kabut Tebal",
+    51: "Gerimis Ringan",
+    53: "Gerimis Sedang",
+    55: "Gerimis Lebat",
+    61: "Hujan Ringan",
+    63: "Hujan Sedang",
+    65: "Hujan Lebat",
+    80: "Hujan Rintik",
+    81: "Hujan Deras",
+    82: "Hujan Sangat Deras",
+    95: "Badai Petir",
+    96: "Badai & Petir",
+    99: "Badai Hebat"
+}
+
+def get_weather_info():
+    global _cached_weather, _last_weather_fetch, _cached_lat, _cached_lon, _cached_city
+    now = time.time()
+    # Query weather every 10 minutes (600s)
+    if now - _last_weather_fetch > 600.0 or _last_weather_fetch == 0:
+        _last_weather_fetch = now
+        def _worker():
+            global _cached_weather, _cached_lat, _cached_lon, _cached_city
+            try:
+                import urllib.request
+                if _cached_lat is None:
+                    try:
+                        req = urllib.request.Request("http://ip-api.com/json", headers={"User-Agent": "curl/7.68.0"})
+                        with urllib.request.urlopen(req, timeout=4) as resp:
+                            data = json.loads(resp.read().decode())
+                            _cached_lat = data.get("lat", -6.2808)
+                            _cached_lon = data.get("lon", 106.9835)
+                            _cached_city = data.get("city", "Bekasi")
+                    except Exception:
+                        _cached_lat = -6.2808
+                        _cached_lon = 106.9835
+                        _cached_city = "Bekasi"
+
+                url = f"https://api.open-meteo.com/v1/forecast?latitude={_cached_lat}&longitude={_cached_lon}&current_weather=true"
+                req_w = urllib.request.Request(url, headers={"User-Agent": "curl/7.68.0"})
+                with urllib.request.urlopen(req_w, timeout=5) as w_resp:
+                    w_data = json.loads(w_resp.read().decode())
+                    cw = w_data.get("current_weather", {})
+                    temp = float(cw.get("temperature", 30.0))
+                    wcode = int(cw.get("weathercode", 0))
+                    is_day = int(cw.get("is_day", 1))
+                    
+                    w_text = WMO_WEATHER_MAP.get(wcode, "Cerah")
+                    if is_day == 0 and wcode == 0:
+                        w_text = "Malam Cerah"
+                    
+                    _cached_weather = {
+                        "temp": round(temp, 1),
+                        "code": wcode,
+                        "day": is_day,
+                        "text": w_text,
+                        "loc": _cached_city
+                    }
+            except Exception:
+                pass
+        threading.Thread(target=_worker, daemon=True).start()
+    return _cached_weather
+
 def find_esp32_port():
     """Detect Waveshare ESP32-S3 USB CDC port."""
     ports = serial.tools.list_ports.comports()
@@ -382,6 +463,9 @@ def main():
                 # 7. Top Network Connections
                 top_conns = get_network_connections(limit=3)
 
+                # 8. Real-time Weather
+                weather = get_weather_info()
+
                 payload = {
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
@@ -403,6 +487,11 @@ def main():
                     "date": date_str,
                     "day_idx": day_idx,
                     "rem": get_macos_reminders()[:250],
+                    "w_temp": weather.get("temp", 30.0),
+                    "w_code": weather.get("code", 0),
+                    "w_day": weather.get("day", 1),
+                    "w_text": weather.get("text", "Cerah"),
+                    "w_loc": weather.get("loc", "Bekasi"),
                     "procs": top_procs,
                     "conns": top_conns,
                     "disks": all_disks

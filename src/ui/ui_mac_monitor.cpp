@@ -93,6 +93,8 @@ static lv_obj_t *lbl_ss_date = nullptr;
 static lv_obj_t *lbl_ss_reminders = nullptr;
 static lv_obj_t *lbl_ss_sub = nullptr;
 static lv_obj_t *ss_sun = nullptr;
+static lv_obj_t *lbl_ss_wtemp = nullptr;
+static lv_obj_t *lbl_ss_wdesc = nullptr;
 static lv_obj_t *lbl_ss_days[7];
 static const char* INDO_DAYS_SHORT[7] = {"Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"};
 
@@ -889,10 +891,10 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(lbl_ss_time, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_time, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    // 5.2 Golden Accent Sun Circle (next to time)
+    // 5.2 Dynamic Celestial Weather Orb & Info (next to time)
     ss_sun = lv_obj_create(scr_screensaver);
-    lv_obj_set_size(ss_sun, 64, 64);
-    lv_obj_set_pos(ss_sun, 500, 125);
+    lv_obj_set_size(ss_sun, 56, 56);
+    lv_obj_set_pos(ss_sun, 510, 85);
     lv_obj_set_style_bg_color(ss_sun, lv_color_hex(0xFFB800), 0);
     lv_obj_set_style_bg_opa(ss_sun, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(ss_sun, 0, 0);
@@ -900,6 +902,26 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_clear_flag(ss_sun, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(ss_sun, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(ss_sun, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lbl_ss_wtemp = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_wtemp, "--°C");
+    lv_obj_set_style_text_color(lbl_ss_wtemp, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(lbl_ss_wtemp, &lv_font_montserrat_24, 0);
+    lv_obj_set_pos(lbl_ss_wtemp, 480, 150);
+    lv_obj_set_width(lbl_ss_wtemp, 116);
+    lv_obj_set_style_text_align(lbl_ss_wtemp, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_add_flag(lbl_ss_wtemp, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_wtemp, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lbl_ss_wdesc = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_wdesc, "Memuat cuaca...");
+    lv_obj_set_style_text_color(lbl_ss_wdesc, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_font(lbl_ss_wdesc, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(lbl_ss_wdesc, 448, 185);
+    lv_obj_set_width(lbl_ss_wdesc, 180);
+    lv_obj_set_style_text_align(lbl_ss_wdesc, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_add_flag(lbl_ss_wdesc, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_wdesc, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
     // 5.3 Vertical Indonesian Days Roll (Right Column)
     for (int i = 0; i < 7; i++) {
@@ -1009,6 +1031,61 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     }
     if (lbl_clock && m.clock_time[0] != '\0') {
         lv_label_set_text(lbl_clock, m.clock_time);
+    }
+
+    // Real-time Dynamic Weather Orb & Info Update
+    if (ss_sun && (!hasPrev || m.weather_code != prev.weather_code || m.weather_is_day != prev.weather_is_day)) {
+        uint32_t orbColor = 0xFFB800; // Default Sun Gold
+        uint32_t glowColor = 0xFF9800;
+
+        if (m.weather_code >= 95) {
+            // Badai Petir (Thunderstorm)
+            orbColor = 0xA855F7; // Neon Purple
+            glowColor = 0x7C3AED;
+        } else if (m.weather_code >= 51 && m.weather_code <= 82) {
+            // Hujan / Gerimis / Showers (Rain)
+            orbColor = 0x00F0FF; // Neon Cyan
+            glowColor = 0x0284C7;
+        } else if (m.weather_code >= 1 && m.weather_code <= 48) {
+            // Berawan / Mendung / Kabut (Cloudy / Overcast)
+            orbColor = 0x94A3B8; // Slate Cloud
+            glowColor = 0x64748B;
+        } else {
+            // Cerah (Clear Sky, code 0)
+            if (m.weather_is_day == 0) {
+                // Malam Cerah (Silver Moon)
+                orbColor = 0xE2E8F0; // Moon Silver
+                glowColor = 0x38BDF8; // Soft Sky Glow
+            } else {
+                // Siang Cerah (Golden Sun)
+                orbColor = 0xFFB800; // Sun Gold
+                glowColor = 0xFF9800;
+            }
+        }
+
+        lv_obj_set_style_bg_color(ss_sun, lv_color_hex(orbColor), 0);
+        lv_obj_set_style_shadow_color(ss_sun, lv_color_hex(glowColor), 0);
+        lv_obj_set_style_shadow_width(ss_sun, 24, 0);
+        lv_obj_set_style_shadow_spread(ss_sun, 4, 0);
+        lv_obj_set_style_shadow_opa(ss_sun, LV_OPA_60, 0);
+    }
+
+    if (lbl_ss_wtemp && (!hasPrev || fabsf(m.weather_temp - prev.weather_temp) >= 0.2f)) {
+        if (m.weather_temp > -40.0f && m.weather_temp < 65.0f) {
+            snprintf(buf, sizeof(buf), "%.0f°C", m.weather_temp);
+            lv_label_set_text(lbl_ss_wtemp, buf);
+        }
+    }
+
+    if (lbl_ss_wdesc && (!hasPrev || strcmp(m.weather_text, prev.weather_text) != 0 || strcmp(m.weather_loc, prev.weather_loc) != 0)) {
+        if (m.weather_text[0] != '\0') {
+            if (m.weather_loc[0] != '\0') {
+                snprintf(buf, sizeof(buf), "%s • %s", m.weather_text, m.weather_loc);
+            } else {
+                snprintf(buf, sizeof(buf), "%s", m.weather_text);
+            }
+            lv_label_set_text(lbl_ss_wdesc, buf);
+        }
     }
 
     // Reminders Carousel Update

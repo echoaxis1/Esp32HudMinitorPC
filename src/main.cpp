@@ -92,6 +92,25 @@ void processMacMetricsJson(const char *jsonStr) {
 
     latestMetrics.day_idx = doc["day_idx"] | 0;
 
+    // Real-time Weather
+    latestMetrics.weather_temp   = doc["w_temp"].is<float>() ? doc["w_temp"].as<float>() : 30.0f;
+    latestMetrics.weather_code   = doc["w_code"] | 0;
+    latestMetrics.weather_is_day = doc["w_day"].is<int>() ? doc["w_day"].as<int>() : 1;
+    latestMetrics.weather_text[0] = '\0';
+    if (doc["w_text"].is<const char*>()) {
+        strncpy(latestMetrics.weather_text, doc["w_text"].as<const char*>(), sizeof(latestMetrics.weather_text) - 1);
+        latestMetrics.weather_text[sizeof(latestMetrics.weather_text) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.weather_text, "Cerah");
+    }
+    latestMetrics.weather_loc[0] = '\0';
+    if (doc["w_loc"].is<const char*>()) {
+        strncpy(latestMetrics.weather_loc, doc["w_loc"].as<const char*>(), sizeof(latestMetrics.weather_loc) - 1);
+        latestMetrics.weather_loc[sizeof(latestMetrics.weather_loc) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.weather_loc, "Bekasi");
+    }
+
     // Top CPU Processes Parsing
     latestMetrics.process_count = 0;
     if (doc["procs"].is<JsonArray>()) {
