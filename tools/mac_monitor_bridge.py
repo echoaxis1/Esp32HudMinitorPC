@@ -10,6 +10,7 @@ import json
 import shutil
 import subprocess
 import socket
+import datetime
 import psutil
 import serial
 import serial.tools.list_ports
@@ -317,8 +318,11 @@ def main():
                 except Exception:
                     pass
 
-                # 5. Uptime
+                # 5. Uptime & Clock Time/Date
                 uptime = get_uptime()
+                now_dt = datetime.datetime.now()
+                time_str = now_dt.strftime("%H:%M:%S")
+                date_str = now_dt.strftime("%A, %d %B %Y")
 
                 # 6. Top CPU Processes
                 top_procs = get_top_processes(limit=6)
@@ -343,6 +347,8 @@ def main():
                     "ip": local_ip,
                     "chip": chip_name,
                     "uptime": uptime,
+                    "time": time_str,
+                    "date": date_str,
                     "procs": top_procs,
                     "conns": top_conns,
                     "disks": all_disks

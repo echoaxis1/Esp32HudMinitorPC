@@ -66,6 +66,22 @@ void processMacMetricsJson(const char *jsonStr) {
         strcpy(latestMetrics.uptime, "--");
     }
 
+    latestMetrics.clock_time[0] = '\0';
+    if (doc["time"].is<const char*>()) {
+        strncpy(latestMetrics.clock_time, doc["time"].as<const char*>(), sizeof(latestMetrics.clock_time) - 1);
+        latestMetrics.clock_time[sizeof(latestMetrics.clock_time) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.clock_time, "--:--");
+    }
+
+    latestMetrics.clock_date[0] = '\0';
+    if (doc["date"].is<const char*>()) {
+        strncpy(latestMetrics.clock_date, doc["date"].as<const char*>(), sizeof(latestMetrics.clock_date) - 1);
+        latestMetrics.clock_date[sizeof(latestMetrics.clock_date) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.clock_date, "--");
+    }
+
     // Top CPU Processes Parsing
     latestMetrics.process_count = 0;
     if (doc["procs"].is<JsonArray>()) {
@@ -178,6 +194,8 @@ void setup() {
     initMetrics.net_up_kb = 0.0f;
     strncpy(initMetrics.chip_name, "Apple Silicon", sizeof(initMetrics.chip_name));
     strncpy(initMetrics.uptime, "--", sizeof(initMetrics.uptime));
+    strncpy(initMetrics.clock_time, "--:--", sizeof(initMetrics.clock_time));
+    strncpy(initMetrics.clock_date, "--", sizeof(initMetrics.clock_date));
     strncpy(initMetrics.media_title, "Waiting for Mac Data Bridge...", sizeof(initMetrics.media_title));
     initMetrics.process_count = 0;
     for (int i = 0; i < MAX_TOP_PROCESSES; i++) {

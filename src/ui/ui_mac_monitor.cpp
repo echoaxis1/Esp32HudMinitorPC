@@ -21,6 +21,7 @@ static lv_obj_t *scr_dashboard = nullptr;
 static lv_obj_t *scr_processes = nullptr;
 static lv_obj_t *scr_networks = nullptr;
 static lv_obj_t *scr_storage = nullptr;
+static lv_obj_t *scr_screensaver = nullptr;
 
 // Dashboard Header Widgets
 static lv_obj_t *lbl_chip = nullptr;
@@ -84,6 +85,12 @@ static lv_obj_t *bar_d_usages[MAX_DISKS];
 static lv_obj_t *lbl_d_stats[MAX_DISKS];
 static lv_obj_t *lbl_d_subtitles[MAX_DISKS];
 
+// Screensaver Standby Widgets
+static lv_obj_t *lbl_ss_time = nullptr;
+static lv_obj_t *lbl_ss_date = nullptr;
+static lv_obj_t *lbl_ss_status = nullptr;
+static lv_obj_t *lbl_ss_sub = nullptr;
+
 static lv_obj_t *create_card(lv_obj_t *parent, int x, int y, int w, int h) {
     lv_obj_t *card = lv_obj_create(parent);
     lv_obj_set_pos(card, x, y);
@@ -117,6 +124,7 @@ void UIMacMonitor::showDashboard() {
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+    if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
     if (scr_dashboard) lv_obj_clear_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -124,6 +132,7 @@ void UIMacMonitor::showProcesses() {
     if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+    if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_clear_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -131,6 +140,7 @@ void UIMacMonitor::showNetConnections() {
     if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+    if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_clear_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -138,7 +148,16 @@ void UIMacMonitor::showStorage() {
     if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+    if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_clear_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+}
+
+void UIMacMonitor::showScreensaver() {
+    if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+    if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+    if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+    if (scr_screensaver) lv_obj_clear_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::create(lv_obj_t *parent) {
@@ -835,12 +854,79 @@ void UIMacMonitor::create(lv_obj_t *parent) {
         lv_obj_set_style_text_font(lbl_d_subtitles[i], &lv_font_montserrat_12, 0);
         lv_obj_set_pos(lbl_d_subtitles[i], 0, 106);
     }
+
+    // =========================================================================
+    // 5. SCREENSAVER STANDBY CONTAINER (SCREEN 5)
+    // =========================================================================
+    scr_screensaver = lv_obj_create(parent);
+    lv_obj_set_size(scr_screensaver, 800, 480);
+    lv_obj_set_pos(scr_screensaver, 0, 0);
+    lv_obj_set_style_bg_color(scr_screensaver, COLOR_BG, 0);
+    lv_obj_set_style_border_width(scr_screensaver, 0, 0);
+    lv_obj_set_style_pad_all(scr_screensaver, 0, 0);
+    lv_obj_clear_flag(scr_screensaver, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(scr_screensaver, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *ss_card = create_card(scr_screensaver, 50, 40, 700, 400);
+    lv_obj_add_flag(ss_card, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(ss_card, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lbl_ss_time = lv_label_create(ss_card);
+    lv_label_set_text(lbl_ss_time, "00:00:00");
+    lv_obj_set_style_text_color(lbl_ss_time, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_ss_time, &lv_font_montserrat_48, 0);
+    lv_obj_align(lbl_ss_time, LV_ALIGN_CENTER, 0, -45);
+
+    lbl_ss_date = lv_label_create(ss_card);
+    lv_label_set_text(lbl_ss_date, "Monday, 01 January 2026");
+    lv_obj_set_style_text_color(lbl_ss_date, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_ss_date, &lv_font_montserrat_20, 0);
+    lv_obj_align(lbl_ss_date, LV_ALIGN_CENTER, 0, 25);
+
+    lbl_ss_status = lv_label_create(ss_card);
+    lv_label_set_text(lbl_ss_status, "[ GRAPHIC CORE INACTIVE • MAC STANDBY ]");
+    lv_obj_set_style_text_color(lbl_ss_status, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_ss_status, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_ss_status, LV_ALIGN_CENTER, 0, 75);
+
+    lbl_ss_sub = lv_label_create(ss_card);
+    lv_label_set_text(lbl_ss_sub, "Tap screen to preview HUD • Auto-wakes on Mac activity");
+    lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_ss_sub, LV_ALIGN_CENTER, 0, 115);
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     char buf[64];
     static MacSystemMetrics prev;
     static bool hasPrev = false;
+
+    // SCREEN SAVER / STANDBY AUTO TRANSITION (Triggered when Graphic Core is inactive / asleep)
+    static bool inScreensaver = false;
+    if (m.gpu_temp <= 0.0f) {
+        if (!inScreensaver) {
+            inScreensaver = true;
+            UIMacMonitor::showScreensaver();
+        }
+    } else {
+        if (inScreensaver) {
+            inScreensaver = false;
+            UIMacMonitor::showDashboard();
+        }
+    }
+
+    // Screensaver & Header Clock Updates
+    if (lbl_ss_time && m.clock_time[0] != '\0') {
+        lv_label_set_text(lbl_ss_time, m.clock_time);
+    }
+    if (lbl_ss_date && m.clock_date[0] != '\0') {
+        lv_label_set_text(lbl_ss_date, m.clock_date);
+    }
+    if (lbl_clock && m.clock_time[0] != '\0') {
+        lv_label_set_text(lbl_clock, m.clock_time);
+    }
 
     // Chip Name
     if (lbl_chip && m.chip_name[0] != '\0' && (!hasPrev || strcmp(m.chip_name, prev.chip_name) != 0)) {

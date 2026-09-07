@@ -48,6 +48,8 @@ struct MacSystemMetrics {
     char chip_name[32];
     char media_title[64];
     char uptime[24];
+    char clock_time[16];
+    char clock_date[32];
     
     uint8_t process_count;
     MacProcessInfo top_processes[MAX_TOP_PROCESSES];
@@ -67,5 +69,7 @@ public:
     static void showProcesses();
     static void showNetConnections();
     static void showStorage();
+    static void showScreensaver();
 };
+
 
