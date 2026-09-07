@@ -16,6 +16,8 @@
 #define COLOR_TEXT_MUTED  lv_color_hex(0x64748B)
 
 // Screen Containers
+extern const lv_font_t font_clock_110;
+
 static lv_obj_t *root_parent = nullptr;
 static lv_obj_t *scr_dashboard = nullptr;
 static lv_obj_t *scr_processes = nullptr;
@@ -869,33 +871,33 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(scr_screensaver, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t *ss_card = create_card(scr_screensaver, 50, 40, 700, 400);
+    lv_obj_t *ss_card = create_card(scr_screensaver, 24, 20, 752, 440);
     lv_obj_add_flag(ss_card, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(ss_card, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
     lbl_ss_time = lv_label_create(ss_card);
     lv_label_set_text(lbl_ss_time, "00:00:00");
     lv_obj_set_style_text_color(lbl_ss_time, COLOR_ACCENT_CYAN, 0);
-    lv_obj_set_style_text_font(lbl_ss_time, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(lbl_ss_time, &font_clock_110, 0);
     lv_obj_align(lbl_ss_time, LV_ALIGN_CENTER, 0, -45);
 
     lbl_ss_date = lv_label_create(ss_card);
     lv_label_set_text(lbl_ss_date, "Monday, 01 January 2026");
     lv_obj_set_style_text_color(lbl_ss_date, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_ss_date, &lv_font_montserrat_20, 0);
-    lv_obj_align(lbl_ss_date, LV_ALIGN_CENTER, 0, 25);
+    lv_obj_set_style_text_font(lbl_ss_date, &lv_font_montserrat_24, 0);
+    lv_obj_align(lbl_ss_date, LV_ALIGN_CENTER, 0, 50);
 
     lbl_ss_status = lv_label_create(ss_card);
     lv_label_set_text(lbl_ss_status, "[ GRAPHIC CORE INACTIVE • MAC STANDBY ]");
     lv_obj_set_style_text_color(lbl_ss_status, COLOR_ACCENT_AMBER, 0);
     lv_obj_set_style_text_font(lbl_ss_status, &lv_font_montserrat_14, 0);
-    lv_obj_align(lbl_ss_status, LV_ALIGN_CENTER, 0, 75);
+    lv_obj_align(lbl_ss_status, LV_ALIGN_CENTER, 0, 105);
 
     lbl_ss_sub = lv_label_create(ss_card);
     lv_label_set_text(lbl_ss_sub, "Tap screen to preview HUD • Auto-wakes on Mac activity");
     lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_ss_sub, LV_ALIGN_CENTER, 0, 115);
+    lv_obj_align(lbl_ss_sub, LV_ALIGN_CENTER, 0, 145);
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
