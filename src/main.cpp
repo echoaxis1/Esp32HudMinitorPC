@@ -82,6 +82,8 @@ void processMacMetricsJson(const char *jsonStr) {
         strcpy(latestMetrics.clock_date, "--");
     }
 
+    latestMetrics.day_idx = doc["day_idx"] | 0;
+
     // Top CPU Processes Parsing
     latestMetrics.process_count = 0;
     if (doc["procs"].is<JsonArray>()) {

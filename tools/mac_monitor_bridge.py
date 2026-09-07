@@ -318,11 +318,20 @@ def main():
                 except Exception:
                     pass
 
-                # 5. Uptime & Clock Time/Date
+                # 5. Uptime & Indonesian Clock Time/Date
                 uptime = get_uptime()
                 now_dt = datetime.datetime.now()
-                time_str = now_dt.strftime("%H:%M:%S")
-                date_str = now_dt.strftime("%A, %d %B %Y")
+                time_str = now_dt.strftime("%H:%M")
+                
+                INDONESIAN_DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+                INDONESIAN_MONTHS = [
+                    "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+                ]
+                day_idx = now_dt.weekday() # 0 = Senin, 6 = Minggu
+                day_name = INDONESIAN_DAYS[day_idx]
+                month_name = INDONESIAN_MONTHS[now_dt.month]
+                date_str = f"{day_name}, {now_dt.day:02d} {month_name} {now_dt.year}"
 
                 # 6. Top CPU Processes
                 top_procs = get_top_processes(limit=6)
@@ -349,6 +358,7 @@ def main():
                     "uptime": uptime,
                     "time": time_str,
                     "date": date_str,
+                    "day_idx": day_idx,
                     "procs": top_procs,
                     "conns": top_conns,
                     "disks": all_disks

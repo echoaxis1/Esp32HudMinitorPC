@@ -50,6 +50,7 @@ struct MacSystemMetrics {
     char uptime[24];
     char clock_time[16];
     char clock_date[32];
+    int day_idx;
     
     uint8_t process_count;
     MacProcessInfo top_processes[MAX_TOP_PROCESSES];

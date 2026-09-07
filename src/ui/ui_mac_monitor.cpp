@@ -16,7 +16,7 @@
 #define COLOR_TEXT_MUTED  lv_color_hex(0x64748B)
 
 // Screen Containers
-extern const lv_font_t font_clock_110;
+extern const lv_font_t font_clock_180;
 
 static lv_obj_t *root_parent = nullptr;
 static lv_obj_t *scr_dashboard = nullptr;
@@ -87,11 +87,14 @@ static lv_obj_t *bar_d_usages[MAX_DISKS];
 static lv_obj_t *lbl_d_stats[MAX_DISKS];
 static lv_obj_t *lbl_d_subtitles[MAX_DISKS];
 
-// Screensaver Standby Widgets
+// Screensaver Standby Widgets (Apple Standby Watch Style)
 static lv_obj_t *lbl_ss_time = nullptr;
 static lv_obj_t *lbl_ss_date = nullptr;
 static lv_obj_t *lbl_ss_status = nullptr;
 static lv_obj_t *lbl_ss_sub = nullptr;
+static lv_obj_t *ss_sun = nullptr;
+static lv_obj_t *lbl_ss_days[7];
+static const char* INDO_DAYS_SHORT[7] = {"Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"};
 
 static lv_obj_t *create_card(lv_obj_t *parent, int x, int y, int w, int h) {
     lv_obj_t *card = lv_obj_create(parent);
@@ -116,6 +119,10 @@ static void on_net_card_click(lv_event_t *e) {
 
 static void on_disk_card_click(lv_event_t *e) {
     UIMacMonitor::showStorage();
+}
+
+static void on_clock_header_click(lv_event_t *e) {
+    UIMacMonitor::showScreensaver();
 }
 
 static void on_back_btn_click(lv_event_t *e) {
@@ -200,10 +207,12 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_align(lbl_uptime, LV_ALIGN_CENTER, 0, 0);
 
     lbl_clock = lv_label_create(header);
-    lv_label_set_text(lbl_clock, "LIVE MONITOR");
+    lv_label_set_text(lbl_clock, "--:--");
     lv_obj_set_style_text_color(lbl_clock, COLOR_TEXT_MAIN, 0);
     lv_obj_set_style_text_font(lbl_clock, &lv_font_montserrat_16, 0);
     lv_obj_align(lbl_clock, LV_ALIGN_RIGHT_MID, -8, 0);
+    lv_obj_add_flag(lbl_clock, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_clock, on_clock_header_click, LV_EVENT_CLICKED, NULL);
 
     // 1.2 CPU CARD (Top Left: 245 x 220) - INTERACTIVE TOUCH BUTTON
     card_cpu = create_card(scr_dashboard, 12, 66, 245, 220);
@@ -858,12 +867,12 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     }
 
     // =========================================================================
-    // 5. SCREENSAVER STANDBY CONTAINER (SCREEN 5)
+    // 5. SCREENSAVER STANDBY CONTAINER (SCREEN 5) - APPLE STANDBY WATCH STYLE
     // =========================================================================
     scr_screensaver = lv_obj_create(parent);
     lv_obj_set_size(scr_screensaver, 800, 480);
     lv_obj_set_pos(scr_screensaver, 0, 0);
-    lv_obj_set_style_bg_color(scr_screensaver, COLOR_BG, 0);
+    lv_obj_set_style_bg_color(scr_screensaver, lv_color_hex(0x000000), 0);
     lv_obj_set_style_border_width(scr_screensaver, 0, 0);
     lv_obj_set_style_pad_all(scr_screensaver, 0, 0);
     lv_obj_clear_flag(scr_screensaver, LV_OBJ_FLAG_SCROLLABLE);
@@ -871,33 +880,59 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(scr_screensaver, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t *ss_card = create_card(scr_screensaver, 24, 20, 752, 440);
-    lv_obj_add_flag(ss_card, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(ss_card, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+    // 5.1 Ultra Huge Time Label (180px SF Compact Rounded)
+    lbl_ss_time = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_time, "00:00");
+    lv_obj_set_style_text_color(lbl_ss_time, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(lbl_ss_time, &font_clock_180, 0);
+    lv_obj_set_pos(lbl_ss_time, 40, 70);
+    lv_obj_add_flag(lbl_ss_time, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_time, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    lbl_ss_time = lv_label_create(ss_card);
-    lv_label_set_text(lbl_ss_time, "00:00:00");
-    lv_obj_set_style_text_color(lbl_ss_time, COLOR_ACCENT_CYAN, 0);
-    lv_obj_set_style_text_font(lbl_ss_time, &font_clock_110, 0);
-    lv_obj_align(lbl_ss_time, LV_ALIGN_CENTER, 0, -45);
+    // 5.2 Golden Accent Sun Circle (next to time)
+    ss_sun = lv_obj_create(scr_screensaver);
+    lv_obj_set_size(ss_sun, 64, 64);
+    lv_obj_set_pos(ss_sun, 520, 130);
+    lv_obj_set_style_bg_color(ss_sun, lv_color_hex(0xFFB800), 0);
+    lv_obj_set_style_bg_opa(ss_sun, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(ss_sun, 0, 0);
+    lv_obj_set_style_radius(ss_sun, LV_RADIUS_CIRCLE, 0);
+    lv_obj_clear_flag(ss_sun, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(ss_sun, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(ss_sun, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    lbl_ss_date = lv_label_create(ss_card);
-    lv_label_set_text(lbl_ss_date, "Monday, 01 January 2026");
-    lv_obj_set_style_text_color(lbl_ss_date, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_ss_date, &lv_font_montserrat_24, 0);
-    lv_obj_align(lbl_ss_date, LV_ALIGN_CENTER, 0, 50);
+    // 5.3 Vertical Indonesian Days Roll (Right Column)
+    for (int i = 0; i < 7; i++) {
+        lbl_ss_days[i] = lv_label_create(scr_screensaver);
+        lv_label_set_text(lbl_ss_days[i], INDO_DAYS_SHORT[i]);
+        lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0x475569), 0);
+        lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_20, 0);
+        lv_obj_set_pos(lbl_ss_days[i], 660, 48 + (i * 54));
+        lv_obj_add_flag(lbl_ss_days[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(lbl_ss_days[i], on_back_btn_click, LV_EVENT_CLICKED, NULL);
+    }
 
-    lbl_ss_status = lv_label_create(ss_card);
-    lv_label_set_text(lbl_ss_status, "[ GRAPHIC CORE INACTIVE • MAC STANDBY ]");
+    // 5.4 Indonesian Full Date (Directly beneath the huge clock)
+    lbl_ss_date = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_date, "Senin, 01 Januari 2026");
+    lv_obj_set_style_text_color(lbl_ss_date, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_font(lbl_ss_date, &lv_font_montserrat_28, 0);
+    lv_obj_set_pos(lbl_ss_date, 45, 290);
+    lv_obj_add_flag(lbl_ss_date, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_date, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    // 5.5 Standby Status & Touch Hint
+    lbl_ss_status = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_status, "[ GRAPHIC CORE INACTIVE • STANDBY ]");
     lv_obj_set_style_text_color(lbl_ss_status, COLOR_ACCENT_AMBER, 0);
     lv_obj_set_style_text_font(lbl_ss_status, &lv_font_montserrat_14, 0);
-    lv_obj_align(lbl_ss_status, LV_ALIGN_CENTER, 0, 105);
+    lv_obj_set_pos(lbl_ss_status, 45, 375);
 
-    lbl_ss_sub = lv_label_create(ss_card);
-    lv_label_set_text(lbl_ss_sub, "Tap screen to preview HUD • Auto-wakes on Mac activity");
+    lbl_ss_sub = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_sub, "Sentuh layar untuk membuka HUD Monitor");
     lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_ss_sub, LV_ALIGN_CENTER, 0, 145);
+    lv_obj_set_pos(lbl_ss_sub, 45, 410);
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
@@ -928,6 +963,21 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     }
     if (lbl_clock && m.clock_time[0] != '\0') {
         lv_label_set_text(lbl_clock, m.clock_time);
+    }
+
+    // Indonesian Day-of-week roll highlight
+    for (int i = 0; i < 7; i++) {
+        if (lbl_ss_days[i]) {
+            if (i == m.day_idx) {
+                lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0xFFFFFF), 0);
+                lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_32, 0);
+                lv_obj_set_pos(lbl_ss_days[i], 650, 42 + (i * 54));
+            } else {
+                lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0x475569), 0);
+                lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_20, 0);
+                lv_obj_set_pos(lbl_ss_days[i], 660, 48 + (i * 54));
+            }
+        }
     }
 
     // Chip Name
