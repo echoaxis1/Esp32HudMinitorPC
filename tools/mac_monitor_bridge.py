@@ -15,6 +15,54 @@ import threading
 import psutil
 import serial
 import serial.tools.list_ports
+import ctypes
+
+# Initialize macOS display status detection via CoreGraphics and CoreFoundation
+try:
+    _cg = ctypes.cdll.LoadLibrary('/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics')
+    _cf = ctypes.cdll.LoadLibrary('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
+
+    _cg.CGSessionCopyCurrentDictionary.restype = ctypes.c_void_p
+    _cg.CGMainDisplayID.restype = ctypes.c_uint32
+    _cg.CGDisplayIsAsleep.restype = ctypes.c_int
+    _cg.CGDisplayIsAsleep.argtypes = [ctypes.c_uint32]
+
+    _cf.CFStringCreateWithCString.restype = ctypes.c_void_p
+    _cf.CFStringCreateWithCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
+    _cf.CFDictionaryGetValue.restype = ctypes.c_void_p
+    _cf.CFDictionaryGetValue.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    _cf.CFBooleanGetValue.restype = ctypes.c_bool
+    _cf.CFBooleanGetValue.argtypes = [ctypes.c_void_p]
+    _cf.CFRelease.argtypes = [ctypes.c_void_p]
+    _HAS_CORE_GRAPHICS = True
+except Exception:
+    _HAS_CORE_GRAPHICS = False
+
+def is_macos_display_off():
+    """Detect if macOS screen is currently locked or asleep/powered off."""
+    if not _HAS_CORE_GRAPHICS:
+        return 0
+    try:
+        # 1. Check if main display is asleep
+        main_id = _cg.CGMainDisplayID()
+        if _cg.CGDisplayIsAsleep(main_id):
+            return 1
+
+        # 2. Check if user session is locked
+        d = _cg.CGSessionCopyCurrentDictionary()
+        if d:
+            k = _cf.CFStringCreateWithCString(None, b'CGSSessionScreenIsLocked', 0x08000100)
+            val = _cf.CFDictionaryGetValue(d, k)
+            locked = False
+            if val:
+                locked = _cf.CFBooleanGetValue(val)
+            _cf.CFRelease(k)
+            _cf.CFRelease(d)
+            if locked:
+                return 1
+    except Exception:
+        pass
+    return 0
 
 _cached_reminders = "Tidak ada reminder hari ini"
 _last_reminders_fetch = 0
@@ -478,6 +526,7 @@ def main():
                     "time": time_str,
                     "date": date_str,
                     "day_idx": day_idx,
+                    "disp_off": is_macos_display_off(),
                     "rem": rems_val,
                     "w_temp": weather.get("temp", 30.0),
                     "w_code": weather.get("code", 0),

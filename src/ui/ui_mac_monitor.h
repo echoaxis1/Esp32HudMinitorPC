@@ -52,6 +52,7 @@ struct MacSystemMetrics {
     char clock_date[32];
     char reminders[256];
     int day_idx;
+    bool display_off;
     
     // Real-time Weather
     float weather_temp;

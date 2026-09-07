@@ -91,6 +91,7 @@ void processMacMetricsJson(const char *jsonStr) {
     }
 
     latestMetrics.day_idx = doc["day_idx"] | 0;
+    latestMetrics.display_off = (doc["disp_off"] | 0) == 1;
 
     // Real-time Weather
     latestMetrics.weather_temp   = doc["w_temp"].is<float>() ? doc["w_temp"].as<float>() : 30.0f;
