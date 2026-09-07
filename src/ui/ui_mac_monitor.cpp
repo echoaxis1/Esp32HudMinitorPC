@@ -945,7 +945,7 @@ void UIMacMonitor::create(lv_obj_t *parent) {
 
     // 5.5 Reminders Paged Carousel (Clean Anti-Tearing Discrete Display)
     lbl_ss_reminders = lv_label_create(scr_screensaver);
-    lv_label_set_text(lbl_ss_reminders, "Memuat reminder...");
+    lv_label_set_text(lbl_ss_reminders, LV_SYMBOL_BELL "  Memuat reminder...");
     lv_label_set_long_mode(lbl_ss_reminders, LV_LABEL_LONG_DOT);
     lv_obj_set_width(lbl_ss_reminders, 580);
     lv_obj_set_style_text_color(lbl_ss_reminders, COLOR_ACCENT_AMBER, 0);
@@ -997,7 +997,7 @@ void UIMacMonitor::tickReminders() {
         s_rem_idx = (s_rem_idx + 1) % s_rem_count;
         if (lbl_ss_reminders) {
             char buf[128];
-            snprintf(buf, sizeof(buf), "[ %d/%d ] %s", s_rem_idx + 1, s_rem_count, s_rem_list[s_rem_idx]);
+            snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  [ %d/%d ]  %s", s_rem_idx + 1, s_rem_count, s_rem_list[s_rem_idx]);
             lv_label_set_text(lbl_ss_reminders, buf);
         }
     }
@@ -1094,11 +1094,11 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         s_rem_idx = 0;
         s_last_rem_flip = millis();
         if (s_rem_count > 1) {
-            snprintf(buf, sizeof(buf), "[ 1/%d ] %s", s_rem_count, s_rem_list[0]);
+            snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  [ 1/%d ]  %s", s_rem_count, s_rem_list[0]);
         } else if (s_rem_count == 1) {
-            snprintf(buf, sizeof(buf), "%s", s_rem_list[0]);
+            snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  Reminder: %s", s_rem_list[0]);
         } else {
-            snprintf(buf, sizeof(buf), "Tidak ada reminder aktif");
+            snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  Tidak ada reminder hari ini");
         }
         lv_label_set_text(lbl_ss_reminders, buf);
     }
