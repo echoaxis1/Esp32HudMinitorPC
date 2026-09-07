@@ -30,8 +30,8 @@
     #define LV_TICK_CUSTOM_SYS_TIME_EXPR (millis())
 #endif
 
-#define LV_DISP_DEF_REFR_PERIOD 16          /* 16ms = ~60 FPS */
-#define LV_INDEV_DEF_READ_PERIOD 20
+#define LV_DISP_DEF_REFR_PERIOD 30          /* 30ms = ~33 FPS (matches ST7262 31 FPS PCLK) */
+#define LV_INDEV_DEF_READ_PERIOD 30
 
 /*====================
    FEATURE CONFIGURATION

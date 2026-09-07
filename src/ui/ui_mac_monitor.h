@@ -72,6 +72,7 @@ public:
     static void showNetConnections();
     static void showStorage();
     static void showScreensaver();
+    static void tickReminders();
 };
 
 

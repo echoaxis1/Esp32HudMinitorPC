@@ -245,6 +245,9 @@ void loop() {
         UIMacMonitor::updateMetrics(latestMetrics);
     }
 
+    // Advance reminder carousel timer if multiple reminders exist
+    UIMacMonitor::tickReminders();
+
     // 3. Let LVGL render dirty areas
     lv_timer_handler();
 

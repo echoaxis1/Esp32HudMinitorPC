@@ -921,13 +921,13 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(lbl_ss_date, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_date, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    // 5.5 Reminders Running Text (Circular Marquee for multiple tasks)
+    // 5.5 Reminders Paged Carousel (Clean Anti-Tearing Discrete Display)
     lbl_ss_reminders = lv_label_create(scr_screensaver);
     lv_label_set_text(lbl_ss_reminders, "Memuat reminder...");
-    lv_label_set_long_mode(lbl_ss_reminders, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_label_set_long_mode(lbl_ss_reminders, LV_LABEL_LONG_DOT);
     lv_obj_set_width(lbl_ss_reminders, 580);
     lv_obj_set_style_text_color(lbl_ss_reminders, COLOR_ACCENT_AMBER, 0);
-    lv_obj_set_style_text_font(lbl_ss_reminders, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_font(lbl_ss_reminders, &lv_font_montserrat_18, 0);
     lv_obj_set_pos(lbl_ss_reminders, 45, 345);
     lv_obj_add_flag(lbl_ss_reminders, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_reminders, on_back_btn_click, LV_EVENT_CLICKED, NULL);
@@ -937,6 +937,48 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(lbl_ss_sub, 45, 405);
+}
+
+// Reminder Carousel State
+static char s_rem_list[12][72];
+static int s_rem_count = 0;
+static int s_rem_idx = 0;
+static uint32_t s_last_rem_flip = 0;
+
+static void parse_reminders_to_items(const char* full_str) {
+    s_rem_count = 0;
+    if (!full_str || full_str[0] == '\0') return;
+
+    char temp[320];
+    strncpy(temp, full_str, sizeof(temp) - 1);
+    temp[sizeof(temp) - 1] = '\0';
+
+    char *token = strtok(temp, "•");
+    while (token != NULL && s_rem_count < 12) {
+        while (*token == ' ' || *token == '\t') token++;
+        int len = strlen(token);
+        while (len > 0 && (token[len - 1] == ' ' || token[len - 1] == '\t')) {
+            token[--len] = '\0';
+        }
+        if (len > 0) {
+            strncpy(s_rem_list[s_rem_count], token, sizeof(s_rem_list[0]) - 1);
+            s_rem_list[s_rem_count][sizeof(s_rem_list[0]) - 1] = '\0';
+            s_rem_count++;
+        }
+        token = strtok(NULL, "•");
+    }
+}
+
+void UIMacMonitor::tickReminders() {
+    if (s_rem_count > 1 && (millis() - s_last_rem_flip >= 3500)) {
+        s_last_rem_flip = millis();
+        s_rem_idx = (s_rem_idx + 1) % s_rem_count;
+        if (lbl_ss_reminders) {
+            char buf[128];
+            snprintf(buf, sizeof(buf), "[ %d/%d ] %s", s_rem_idx + 1, s_rem_count, s_rem_list[s_rem_idx]);
+            lv_label_set_text(lbl_ss_reminders, buf);
+        }
+    }
 }
 
 void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
@@ -969,9 +1011,19 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         lv_label_set_text(lbl_clock, m.clock_time);
     }
 
-    // Reminders Running Text Update
+    // Reminders Carousel Update
     if (lbl_ss_reminders && m.reminders[0] != '\0' && (!hasPrev || strcmp(m.reminders, prev.reminders) != 0)) {
-        lv_label_set_text(lbl_ss_reminders, m.reminders);
+        parse_reminders_to_items(m.reminders);
+        s_rem_idx = 0;
+        s_last_rem_flip = millis();
+        if (s_rem_count > 1) {
+            snprintf(buf, sizeof(buf), "[ 1/%d ] %s", s_rem_count, s_rem_list[0]);
+        } else if (s_rem_count == 1) {
+            snprintf(buf, sizeof(buf), "%s", s_rem_list[0]);
+        } else {
+            snprintf(buf, sizeof(buf), "Tidak ada reminder aktif");
+        }
+        lv_label_set_text(lbl_ss_reminders, buf);
     }
 
     // Indonesian Day-of-week roll highlight
