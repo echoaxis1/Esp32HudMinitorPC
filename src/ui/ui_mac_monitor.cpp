@@ -1036,41 +1036,31 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     // Real-time Dynamic Weather Orb & Info Update
     if (ss_sun && (!hasPrev || m.weather_code != prev.weather_code || m.weather_is_day != prev.weather_is_day)) {
         uint32_t orbColor = 0xFFB800; // Default Sun Gold
-        uint32_t glowColor = 0xFF9800;
 
         if (m.weather_code >= 95) {
             // Badai Petir (Thunderstorm)
             orbColor = 0xA855F7; // Neon Purple
-            glowColor = 0x7C3AED;
         } else if (m.weather_code >= 51 && m.weather_code <= 82) {
             // Hujan / Gerimis / Showers (Rain)
             orbColor = 0x00F0FF; // Neon Cyan
-            glowColor = 0x0284C7;
         } else if (m.weather_code >= 1 && m.weather_code <= 48) {
             // Berawan / Mendung / Kabut (Cloudy / Overcast)
             orbColor = 0x94A3B8; // Slate Cloud
-            glowColor = 0x64748B;
         } else {
             // Cerah (Clear Sky, code 0)
             if (m.weather_is_day == 0) {
                 // Malam Cerah (Silver Moon)
                 orbColor = 0xE2E8F0; // Moon Silver
-                glowColor = 0x38BDF8; // Soft Sky Glow
             } else {
                 // Siang Cerah (Golden Sun)
                 orbColor = 0xFFB800; // Sun Gold
-                glowColor = 0xFF9800;
             }
         }
 
         lv_obj_set_style_bg_color(ss_sun, lv_color_hex(orbColor), 0);
-        lv_obj_set_style_shadow_color(ss_sun, lv_color_hex(glowColor), 0);
-        lv_obj_set_style_shadow_width(ss_sun, 24, 0);
-        lv_obj_set_style_shadow_spread(ss_sun, 4, 0);
-        lv_obj_set_style_shadow_opa(ss_sun, LV_OPA_60, 0);
     }
 
-    if (lbl_ss_wtemp && (!hasPrev || fabsf(m.weather_temp - prev.weather_temp) >= 0.2f)) {
+    if (lbl_ss_wtemp && (!hasPrev || (int)m.weather_temp != (int)prev.weather_temp)) {
         if (m.weather_temp > -40.0f && m.weather_temp < 65.0f) {
             snprintf(buf, sizeof(buf), "%.0f°C", m.weather_temp);
             lv_label_set_text(lbl_ss_wtemp, buf);
@@ -1096,7 +1086,7 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         if (s_rem_count > 1) {
             snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  [ 1/%d ]  %s", s_rem_count, s_rem_list[0]);
         } else if (s_rem_count == 1) {
-            snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  Reminder: %s", s_rem_list[0]);
+            snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  %s", s_rem_list[0]);
         } else {
             snprintf(buf, sizeof(buf), LV_SYMBOL_BELL "  Tidak ada reminder hari ini");
         }
