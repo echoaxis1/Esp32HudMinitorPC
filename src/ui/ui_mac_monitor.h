@@ -50,6 +50,7 @@ struct MacSystemMetrics {
     char uptime[24];
     char clock_time[16];
     char clock_date[32];
+    char reminders[256];
     int day_idx;
     
     uint8_t process_count;

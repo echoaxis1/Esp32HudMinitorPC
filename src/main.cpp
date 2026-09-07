@@ -82,6 +82,14 @@ void processMacMetricsJson(const char *jsonStr) {
         strcpy(latestMetrics.clock_date, "--");
     }
 
+    latestMetrics.reminders[0] = '\0';
+    if (doc["rem"].is<const char*>()) {
+        strncpy(latestMetrics.reminders, doc["rem"].as<const char*>(), sizeof(latestMetrics.reminders) - 1);
+        latestMetrics.reminders[sizeof(latestMetrics.reminders) - 1] = '\0';
+    } else {
+        strcpy(latestMetrics.reminders, "Tidak ada reminder aktif");
+    }
+
     latestMetrics.day_idx = doc["day_idx"] | 0;
 
     // Top CPU Processes Parsing

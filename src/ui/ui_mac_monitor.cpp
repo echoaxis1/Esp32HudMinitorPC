@@ -90,7 +90,7 @@ static lv_obj_t *lbl_d_subtitles[MAX_DISKS];
 // Screensaver Standby Widgets (Apple Standby Watch Style)
 static lv_obj_t *lbl_ss_time = nullptr;
 static lv_obj_t *lbl_ss_date = nullptr;
-static lv_obj_t *lbl_ss_status = nullptr;
+static lv_obj_t *lbl_ss_reminders = nullptr;
 static lv_obj_t *lbl_ss_sub = nullptr;
 static lv_obj_t *ss_sun = nullptr;
 static lv_obj_t *lbl_ss_days[7];
@@ -921,12 +921,16 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(lbl_ss_date, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_date, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    // 5.5 Standby Status & Touch Hint
-    lbl_ss_status = lv_label_create(scr_screensaver);
-    lv_label_set_text(lbl_ss_status, "[ GRAPHIC CORE INACTIVE • STANDBY ]");
-    lv_obj_set_style_text_color(lbl_ss_status, COLOR_ACCENT_AMBER, 0);
-    lv_obj_set_style_text_font(lbl_ss_status, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_ss_status, 45, 370);
+    // 5.5 Reminders Running Text (Circular Marquee for multiple tasks)
+    lbl_ss_reminders = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_reminders, "Memuat reminder...");
+    lv_label_set_long_mode(lbl_ss_reminders, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_width(lbl_ss_reminders, 580);
+    lv_obj_set_style_text_color(lbl_ss_reminders, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_ss_reminders, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(lbl_ss_reminders, 45, 345);
+    lv_obj_add_flag(lbl_ss_reminders, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_reminders, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
     lbl_ss_sub = lv_label_create(scr_screensaver);
     lv_label_set_text(lbl_ss_sub, "Sentuh layar untuk membuka HUD Monitor");
@@ -963,6 +967,11 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     }
     if (lbl_clock && m.clock_time[0] != '\0') {
         lv_label_set_text(lbl_clock, m.clock_time);
+    }
+
+    // Reminders Running Text Update
+    if (lbl_ss_reminders && m.reminders[0] != '\0' && (!hasPrev || strcmp(m.reminders, prev.reminders) != 0)) {
+        lv_label_set_text(lbl_ss_reminders, m.reminders);
     }
 
     // Indonesian Day-of-week roll highlight

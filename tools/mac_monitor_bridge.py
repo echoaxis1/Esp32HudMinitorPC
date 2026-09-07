@@ -11,9 +11,53 @@ import shutil
 import subprocess
 import socket
 import datetime
+import threading
 import psutil
 import serial
 import serial.tools.list_ports
+
+_cached_reminders = "Memuat reminder..."
+_last_reminders_fetch = 0
+
+def get_macos_reminders():
+    global _cached_reminders, _last_reminders_fetch
+    now = time.time()
+    if now - _last_reminders_fetch > 10.0:
+        _last_reminders_fetch = now
+        def _worker():
+            global _cached_reminders
+            script = """
+            var Reminders = Application("Reminders");
+            var items = [];
+            try {
+                var lists = Reminders.lists();
+                for (var i = 0; i < Math.min(lists.length, 4); i++) {
+                    var rNames = lists[i].reminders.whose({completed: false}).name();
+                    for (var j = 0; j < rNames.length; j++) {
+                        if (rNames[j] && items.indexOf(rNames[j]) === -1) {
+                            items.push(rNames[j]);
+                        }
+                    }
+                }
+            } catch(e) {}
+            if (items.length === 0) {
+                try {
+                    items = Reminders.defaultList().reminders.whose({completed: false}).name();
+                } catch(e) {}
+            }
+            items.slice(0, 10).join("   •   ");
+            """
+            try:
+                res = subprocess.run(["osascript", "-l", "JavaScript", "-e", script], capture_output=True, text=True, timeout=3)
+                out = res.stdout.strip()
+                if out:
+                    _cached_reminders = out
+                else:
+                    _cached_reminders = "Tidak ada reminder aktif"
+            except Exception:
+                pass
+        threading.Thread(target=_worker, daemon=True).start()
+    return _cached_reminders
 
 def find_esp32_port():
     """Detect Waveshare ESP32-S3 USB CDC port."""
@@ -359,6 +403,7 @@ def main():
                     "time": time_str,
                     "date": date_str,
                     "day_idx": day_idx,
+                    "rem": get_macos_reminders()[:250],
                     "procs": top_procs,
                     "conns": top_conns,
                     "disks": all_disks
