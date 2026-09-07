@@ -16,44 +16,43 @@ import psutil
 import serial
 import serial.tools.list_ports
 
-_cached_reminders = "Memuat reminder..."
+_cached_reminders = "Tidak ada reminder hari ini"
 _last_reminders_fetch = 0
 
 def get_macos_reminders():
     global _cached_reminders, _last_reminders_fetch
     now = time.time()
-    if now - _last_reminders_fetch > 10.0:
+    if now - _last_reminders_fetch > 30.0:
         _last_reminders_fetch = now
         def _worker():
             global _cached_reminders
             script = """
             var Reminders = Application("Reminders");
-            var items = [];
-            try {
-                var lists = Reminders.lists();
-                for (var i = 0; i < Math.min(lists.length, 4); i++) {
-                    var rNames = lists[i].reminders.whose({completed: false}).name();
-                    for (var j = 0; j < rNames.length; j++) {
-                        if (rNames[j] && items.indexOf(rNames[j]) === -1) {
-                            items.push(rNames[j]);
-                        }
+            var list = Reminders.defaultList();
+            var rems = list.reminders.whose({completed: false});
+            var names = rems.name();
+            var dates = rems.dueDate();
+
+            var today = new Date();
+            today.setHours(23, 59, 59, 999);
+
+            var out = [];
+            for (var i = 0; i < names.length; i++) {
+                if (dates[i] && dates[i] <= today) {
+                    if (out.indexOf(names[i]) === -1) {
+                        out.push(names[i]);
                     }
                 }
-            } catch(e) {}
-            if (items.length === 0) {
-                try {
-                    items = Reminders.defaultList().reminders.whose({completed: false}).name();
-                } catch(e) {}
             }
-            items.slice(0, 10).join("   •   ");
+            out.join(" • ");
             """
             try:
-                res = subprocess.run(["osascript", "-l", "JavaScript", "-e", script], capture_output=True, text=True, timeout=3)
+                res = subprocess.run(["osascript", "-l", "JavaScript", "-e", script], capture_output=True, text=True, timeout=12)
                 out = res.stdout.strip()
                 if out:
                     _cached_reminders = out
                 else:
-                    _cached_reminders = "Tidak ada reminder aktif"
+                    _cached_reminders = "Tidak ada reminder hari ini"
             except Exception:
                 pass
         threading.Thread(target=_worker, daemon=True).start()
