@@ -1022,14 +1022,14 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         }
     }
 
-    // Screensaver & Header Clock Updates
-    if (lbl_ss_time && m.clock_time[0] != '\0') {
+    // Screensaver & Header Clock Updates (Delta diffed to prevent continuous PSRAM redraws)
+    if (lbl_ss_time && m.clock_time[0] != '\0' && (!hasPrev || strcmp(m.clock_time, prev.clock_time) != 0)) {
         lv_label_set_text(lbl_ss_time, m.clock_time);
     }
-    if (lbl_ss_date && m.clock_date[0] != '\0') {
+    if (lbl_ss_date && m.clock_date[0] != '\0' && (!hasPrev || strcmp(m.clock_date, prev.clock_date) != 0)) {
         lv_label_set_text(lbl_ss_date, m.clock_date);
     }
-    if (lbl_clock && m.clock_time[0] != '\0') {
+    if (lbl_clock && m.clock_time[0] != '\0' && (!hasPrev || strcmp(m.clock_time, prev.clock_time) != 0)) {
         lv_label_set_text(lbl_clock, m.clock_time);
     }
 
@@ -1093,17 +1093,19 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         lv_label_set_text(lbl_ss_reminders, buf);
     }
 
-    // Indonesian Day-of-week roll highlight
-    for (int i = 0; i < 7; i++) {
-        if (lbl_ss_days[i]) {
-            if (i == m.day_idx) {
-                lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0xFFFFFF), 0);
-                lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_32, 0);
-                lv_obj_set_pos(lbl_ss_days[i], 650, 42 + (i * 54));
-            } else {
-                lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0x475569), 0);
-                lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_20, 0);
-                lv_obj_set_pos(lbl_ss_days[i], 660, 48 + (i * 54));
+    // Indonesian Day-of-week roll highlight (Only update on day transition or initial load)
+    if (!hasPrev || m.day_idx != prev.day_idx) {
+        for (int i = 0; i < 7; i++) {
+            if (lbl_ss_days[i]) {
+                if (i == m.day_idx) {
+                    lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0xFFFFFF), 0);
+                    lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_32, 0);
+                    lv_obj_set_pos(lbl_ss_days[i], 650, 42 + (i * 54));
+                } else {
+                    lv_obj_set_style_text_color(lbl_ss_days[i], lv_color_hex(0x475569), 0);
+                    lv_obj_set_style_text_font(lbl_ss_days[i], &lv_font_montserrat_20, 0);
+                    lv_obj_set_pos(lbl_ss_days[i], 660, 48 + (i * 54));
+                }
             }
         }
     }
