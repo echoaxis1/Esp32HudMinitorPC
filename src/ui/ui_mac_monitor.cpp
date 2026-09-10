@@ -24,6 +24,7 @@ static lv_obj_t *scr_processes = nullptr;
 static lv_obj_t *scr_networks = nullptr;
 static lv_obj_t *scr_storage = nullptr;
 static lv_obj_t *scr_screensaver = nullptr;
+static lv_obj_t *scr_agy = nullptr;
 
 // Dashboard Header Widgets
 static lv_obj_t *lbl_chip = nullptr;
@@ -48,15 +49,25 @@ static lv_obj_t *lbl_dash_dpct[2];
 static lv_obj_t *bar_dash_disk[2];
 static lv_obj_t *lbl_dash_dsub[2];
 
-// Dashboard THERMAL Widgets (Bottom-Left Card)
+// Dashboard THERMAL & NETWORK Widgets (Bottom-Left Card: 378 x 172)
+static lv_obj_t *card_thermal_net = nullptr;
 static lv_obj_t *lbl_cpu_temp_val = nullptr;
 static lv_obj_t *lbl_gpu_temp_val = nullptr;
 static lv_obj_t *bar_cpu_temp = nullptr;
 static lv_obj_t *bar_gpu_temp = nullptr;
-
-// Dashboard NETWORK Widgets (Bottom-Right Card)
 static lv_obj_t *lbl_net_down = nullptr;
 static lv_obj_t *lbl_net_up = nullptr;
+static lv_obj_t *lbl_net_if = nullptr;
+
+// Dashboard AGY COCKPIT Widgets (Bottom-Right Card: 388 x 172)
+static lv_obj_t *card_agy = nullptr;
+static lv_obj_t *lbl_agy_acc = nullptr;
+static lv_obj_t *lbl_agy_pool = nullptr;
+static lv_obj_t *lbl_agy_claude_val = nullptr;
+static lv_obj_t *bar_agy_claude = nullptr;
+static lv_obj_t *lbl_agy_gemini_val = nullptr;
+static lv_obj_t *bar_agy_gemini = nullptr;
+static lv_obj_t *lbl_agy_sub = nullptr;
 
 // Process Screen Widgets
 static lv_obj_t *lbl_proc_names[MAX_TOP_PROCESSES];
@@ -86,6 +97,17 @@ static lv_obj_t *lbl_d_pcts[MAX_DISKS];
 static lv_obj_t *bar_d_usages[MAX_DISKS];
 static lv_obj_t *lbl_d_stats[MAX_DISKS];
 static lv_obj_t *lbl_d_subtitles[MAX_DISKS];
+
+// AGY Accounts Screen Widgets
+static lv_obj_t *card_agy_rows[MAX_AGY_ACCOUNTS];
+static lv_obj_t *lbl_agy_row_name[MAX_AGY_ACCOUNTS];
+static lv_obj_t *lbl_agy_row_badge[MAX_AGY_ACCOUNTS];
+static lv_obj_t *lbl_agy_row_c_val[MAX_AGY_ACCOUNTS];
+static lv_obj_t *bar_agy_row_c[MAX_AGY_ACCOUNTS];
+static lv_obj_t *lbl_agy_row_g_val[MAX_AGY_ACCOUNTS];
+static lv_obj_t *bar_agy_row_g[MAX_AGY_ACCOUNTS];
+static lv_obj_t *lbl_agy_summary_head = nullptr;
+static char s_agy_acc_ids[MAX_AGY_ACCOUNTS][40];
 
 // Screensaver Standby Widgets (Apple Standby Watch Style)
 static lv_obj_t *lbl_ss_time = nullptr;
@@ -123,6 +145,17 @@ static void on_disk_card_click(lv_event_t *e) {
     UIMacMonitor::showStorage();
 }
 
+static void on_agy_row_click(lv_event_t *e) {
+    const char *acc_id = (const char *)lv_event_get_user_data(e);
+    if (acc_id && acc_id[0] != '\0') {
+        Serial.printf("CMD:SWITCH_AGY:%s\n", acc_id);
+    }
+}
+
+static void on_agy_card_click(lv_event_t *e) {
+    UIMacMonitor::showAgyAccounts();
+}
+
 static void on_clock_header_click(lv_event_t *e) {
     UIMacMonitor::showScreensaver();
 }
@@ -136,6 +169,7 @@ void UIMacMonitor::showDashboard() {
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
     if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+    if (scr_agy) lv_obj_add_flag(scr_agy, LV_OBJ_FLAG_HIDDEN);
     if (scr_dashboard) lv_obj_clear_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -144,6 +178,7 @@ void UIMacMonitor::showProcesses() {
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
     if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+    if (scr_agy) lv_obj_add_flag(scr_agy, LV_OBJ_FLAG_HIDDEN);
     if (scr_processes) lv_obj_clear_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -152,6 +187,7 @@ void UIMacMonitor::showNetConnections() {
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
     if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+    if (scr_agy) lv_obj_add_flag(scr_agy, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_clear_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -160,6 +196,7 @@ void UIMacMonitor::showStorage() {
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+    if (scr_agy) lv_obj_add_flag(scr_agy, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_clear_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -168,7 +205,17 @@ void UIMacMonitor::showScreensaver() {
     if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
     if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
     if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+    if (scr_agy) lv_obj_add_flag(scr_agy, LV_OBJ_FLAG_HIDDEN);
     if (scr_screensaver) lv_obj_clear_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+}
+
+void UIMacMonitor::showAgyAccounts() {
+    if (scr_dashboard) lv_obj_add_flag(scr_dashboard, LV_OBJ_FLAG_HIDDEN);
+    if (scr_processes) lv_obj_add_flag(scr_processes, LV_OBJ_FLAG_HIDDEN);
+    if (scr_networks) lv_obj_add_flag(scr_networks, LV_OBJ_FLAG_HIDDEN);
+    if (scr_storage) lv_obj_add_flag(scr_storage, LV_OBJ_FLAG_HIDDEN);
+    if (scr_screensaver) lv_obj_add_flag(scr_screensaver, LV_OBJ_FLAG_HIDDEN);
+    if (scr_agy) lv_obj_clear_flag(scr_agy, LV_OBJ_FLAG_HIDDEN);
 }
 
 void UIMacMonitor::create(lv_obj_t *parent) {
@@ -361,100 +408,156 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_dash_dsub[1], &lv_font_montserrat_12, 0);
     lv_obj_set_pos(lbl_dash_dsub[1], 0, 130);
 
-    // 1.5 THERMAL SENSORS CARD (Bottom Left: 378 x 172)
-    lv_obj_t *card_thermal = create_card(scr_dashboard, 12, 296, 378, 172);
+    // 1.5 SYSTEM THERMAL & NETWORK (Bottom Left: 378 x 172) - INTERACTIVE TOUCH BUTTON
+    card_thermal_net = create_card(scr_dashboard, 12, 296, 378, 172);
+    lv_obj_add_flag(card_thermal_net, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card_thermal_net, on_net_card_click, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_border_color(card_thermal_net, COLOR_ACCENT_CYAN, LV_STATE_PRESSED);
 
-    lv_obj_t *title_thermal = lv_label_create(card_thermal);
-    lv_label_set_text(title_thermal, "SOC THERMAL SENSORS");
-    lv_obj_set_style_text_color(title_thermal, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(title_thermal, &lv_font_montserrat_14, 0);
-    lv_obj_align(title_thermal, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_t *title_thermal_net = lv_label_create(card_thermal_net);
+    lv_label_set_text(title_thermal_net, "THERMAL & NETWORK");
+    lv_obj_set_style_text_color(title_thermal_net, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(title_thermal_net, &lv_font_montserrat_12, 0);
+    lv_obj_align(title_thermal_net, LV_ALIGN_TOP_LEFT, 0, 0);
 
-    // CPU Temp Row
-    lv_obj_t *lbl_cpu_t_title = lv_label_create(card_thermal);
-    lv_label_set_text(lbl_cpu_t_title, "CPU CORE");
+    // Thermal Row: CPU Temp (Left) & GPU Temp (Right)
+    lv_obj_t *lbl_cpu_t_title = lv_label_create(card_thermal_net);
+    lv_label_set_text(lbl_cpu_t_title, "CPU");
     lv_obj_set_style_text_color(lbl_cpu_t_title, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(lbl_cpu_t_title, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_cpu_t_title, 0, 30);
+    lv_obj_set_style_text_font(lbl_cpu_t_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_cpu_t_title, 0, 22);
 
-    lbl_cpu_temp_val = lv_label_create(card_thermal);
+    lbl_cpu_temp_val = lv_label_create(card_thermal_net);
     lv_label_set_text(lbl_cpu_temp_val, "-- C");
     lv_obj_set_style_text_color(lbl_cpu_temp_val, COLOR_ACCENT_CORAL, 0);
-    lv_obj_set_style_text_font(lbl_cpu_temp_val, &lv_font_montserrat_20, 0);
-    lv_obj_align(lbl_cpu_temp_val, LV_ALIGN_TOP_RIGHT, 0, 26);
+    lv_obj_set_style_text_font(lbl_cpu_temp_val, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(lbl_cpu_temp_val, 100, 22);
 
-    bar_cpu_temp = lv_bar_create(card_thermal);
-    lv_obj_set_size(bar_cpu_temp, 338, 10);
-    lv_obj_set_pos(bar_cpu_temp, 0, 56);
+    bar_cpu_temp = lv_bar_create(card_thermal_net);
+    lv_obj_set_size(bar_cpu_temp, 160, 6);
+    lv_obj_set_pos(bar_cpu_temp, 0, 42);
     lv_bar_set_range(bar_cpu_temp, 20, 105);
     lv_obj_set_style_bg_color(bar_cpu_temp, lv_color_hex(0x1E293B), LV_PART_MAIN);
     lv_obj_set_style_bg_color(bar_cpu_temp, COLOR_ACCENT_CORAL, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_cpu_temp, 5, 0);
+    lv_obj_set_style_radius(bar_cpu_temp, 3, 0);
 
-    // Graphic Core Temp Row
-    lv_obj_t *lbl_gpu_t_title = lv_label_create(card_thermal);
-    lv_label_set_text(lbl_gpu_t_title, "GRAPHIC CORE");
+    lv_obj_t *lbl_gpu_t_title = lv_label_create(card_thermal_net);
+    lv_label_set_text(lbl_gpu_t_title, "GPU");
     lv_obj_set_style_text_color(lbl_gpu_t_title, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(lbl_gpu_t_title, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_gpu_t_title, 0, 78);
+    lv_obj_set_style_text_font(lbl_gpu_t_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_gpu_t_title, 180, 22);
 
-    lbl_gpu_temp_val = lv_label_create(card_thermal);
+    lbl_gpu_temp_val = lv_label_create(card_thermal_net);
     lv_label_set_text(lbl_gpu_temp_val, "-- C");
     lv_obj_set_style_text_color(lbl_gpu_temp_val, COLOR_ACCENT_GREEN, 0);
-    lv_obj_set_style_text_font(lbl_gpu_temp_val, &lv_font_montserrat_20, 0);
-    lv_obj_align(lbl_gpu_temp_val, LV_ALIGN_TOP_RIGHT, 0, 74);
+    lv_obj_set_style_text_font(lbl_gpu_temp_val, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(lbl_gpu_temp_val, 280, 22);
 
-    bar_gpu_temp = lv_bar_create(card_thermal);
-    lv_obj_set_size(bar_gpu_temp, 338, 10);
-    lv_obj_set_pos(bar_gpu_temp, 0, 104);
+    bar_gpu_temp = lv_bar_create(card_thermal_net);
+    lv_obj_set_size(bar_gpu_temp, 160, 6);
+    lv_obj_set_pos(bar_gpu_temp, 180, 42);
     lv_bar_set_range(bar_gpu_temp, 20, 105);
     lv_obj_set_style_bg_color(bar_gpu_temp, lv_color_hex(0x1E293B), LV_PART_MAIN);
     lv_obj_set_style_bg_color(bar_gpu_temp, COLOR_ACCENT_GREEN, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_gpu_temp, 5, 0);
+    lv_obj_set_style_radius(bar_gpu_temp, 3, 0);
 
-    // 1.6 NETWORK TRAFFIC CARD (Bottom Right: 388 x 172) - INTERACTIVE TOUCH BUTTON
-    lv_obj_t *card_net = create_card(scr_dashboard, 400, 296, 388, 172);
-    lv_obj_add_flag(card_net, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(card_net, on_net_card_click, LV_EVENT_CLICKED, NULL);
-    lv_obj_set_style_border_color(card_net, COLOR_ACCENT_CYAN, LV_STATE_PRESSED);
-
-    lv_obj_t *title_net = lv_label_create(card_net);
-    lv_label_set_text(title_net, "NETWORK TRAFFIC");
-    lv_obj_set_style_text_color(title_net, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(title_net, &lv_font_montserrat_14, 0);
-    lv_obj_align(title_net, LV_ALIGN_TOP_LEFT, 0, 0);
-
-    // Download
-    lv_obj_t *lbl_dl_tag = lv_label_create(card_net);
-    lv_label_set_text(lbl_dl_tag, "DOWNLOAD");
+    // Network Row: Download (Left) & Upload (Right)
+    lv_obj_t *lbl_dl_tag = lv_label_create(card_thermal_net);
+    lv_label_set_text(lbl_dl_tag, "DOWN");
     lv_obj_set_style_text_color(lbl_dl_tag, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_dl_tag, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_dl_tag, 0, 32);
+    lv_obj_set_pos(lbl_dl_tag, 0, 60);
 
-    lbl_net_down = lv_label_create(card_net);
+    lbl_net_down = lv_label_create(card_thermal_net);
     lv_label_set_text(lbl_net_down, "0.0 KB/s");
     lv_obj_set_style_text_color(lbl_net_down, COLOR_ACCENT_CYAN, 0);
-    lv_obj_set_style_text_font(lbl_net_down, &lv_font_montserrat_20, 0);
-    lv_obj_set_pos(lbl_net_down, 0, 50);
+    lv_obj_set_style_text_font(lbl_net_down, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(lbl_net_down, 0, 78);
 
-    // Upload
-    lv_obj_t *lbl_ul_tag = lv_label_create(card_net);
-    lv_label_set_text(lbl_ul_tag, "UPLOAD");
+    lv_obj_t *lbl_ul_tag = lv_label_create(card_thermal_net);
+    lv_label_set_text(lbl_ul_tag, "UP");
     lv_obj_set_style_text_color(lbl_ul_tag, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ul_tag, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_ul_tag, 180, 32);
+    lv_obj_set_pos(lbl_ul_tag, 180, 60);
 
-    lbl_net_up = lv_label_create(card_net);
+    lbl_net_up = lv_label_create(card_thermal_net);
     lv_label_set_text(lbl_net_up, "0.0 KB/s");
     lv_obj_set_style_text_color(lbl_net_up, COLOR_ACCENT_PURPLE, 0);
-    lv_obj_set_style_text_font(lbl_net_up, &lv_font_montserrat_20, 0);
-    lv_obj_set_pos(lbl_net_up, 180, 50);
+    lv_obj_set_style_text_font(lbl_net_up, &lv_font_montserrat_16, 0);
+    lv_obj_set_pos(lbl_net_up, 180, 78);
 
-    lv_obj_t *lbl_net_if = lv_label_create(card_net);
-    lv_label_set_text(lbl_net_if, "Active Interface: en0 (Wi-Fi / Ethernet)");
+    lbl_net_if = lv_label_create(card_thermal_net);
+    lv_label_set_text(lbl_net_if, "Interface: --");
     lv_obj_set_style_text_color(lbl_net_if, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_net_if, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_net_if, 0, 100);
+    lv_obj_set_pos(lbl_net_if, 0, 114);
+
+    // 1.6 ANTIGRAVITY COCKPIT USAGE (Bottom Right: 388 x 172) - INTERACTIVE TOUCH BUTTON
+    card_agy = create_card(scr_dashboard, 400, 296, 388, 172);
+    lv_obj_add_flag(card_agy, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(card_agy, on_agy_card_click, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_style_border_color(card_agy, COLOR_ACCENT_AMBER, LV_STATE_PRESSED);
+
+    lv_obj_t *title_agy = lv_label_create(card_agy);
+    lv_label_set_text(title_agy, "AGY COCKPIT • ACCOUNT USAGE");
+    lv_obj_set_style_text_color(title_agy, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(title_agy, &lv_font_montserrat_12, 0);
+    lv_obj_align(title_agy, LV_ALIGN_TOP_LEFT, 0, 0);
+
+    lbl_agy_pool = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_pool, "Pool: --");
+    lv_obj_set_style_text_color(lbl_agy_pool, COLOR_ACCENT_GREEN, 0);
+    lv_obj_set_style_text_font(lbl_agy_pool, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_agy_pool, LV_ALIGN_TOP_RIGHT, 0, 0);
+
+    // Active Account Tag
+    lbl_agy_acc = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_acc, "ACTIVE: --");
+    lv_obj_set_style_text_color(lbl_agy_acc, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_agy_acc, &lv_font_montserrat_14, 0);
+    lv_obj_set_pos(lbl_agy_acc, 0, 22);
+
+    // Row Claude
+    lv_obj_t *lbl_c_tag = lv_label_create(card_agy);
+    lv_label_set_text(lbl_c_tag, "CLAUDE");
+    lv_obj_set_style_text_color(lbl_c_tag, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_c_tag, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_c_tag, 0, 48);
+
+    lbl_agy_claude_val = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_claude_val, "5h: --% | Wk: --%");
+    lv_obj_set_style_text_color(lbl_agy_claude_val, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_agy_claude_val, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_agy_claude_val, LV_ALIGN_TOP_RIGHT, 0, 48);
+
+    bar_agy_claude = lv_bar_create(card_agy);
+    lv_obj_set_size(bar_agy_claude, 348, 8);
+    lv_obj_set_pos(bar_agy_claude, 0, 68);
+    lv_bar_set_range(bar_agy_claude, 0, 100);
+    lv_obj_set_style_bg_color(bar_agy_claude, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_agy_claude, COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_agy_claude, 4, 0);
+
+    // Row Gemini
+    lv_obj_t *lbl_g_tag = lv_label_create(card_agy);
+    lv_label_set_text(lbl_g_tag, "GEMINI");
+    lv_obj_set_style_text_color(lbl_g_tag, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_g_tag, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_g_tag, 0, 84);
+
+    lbl_agy_gemini_val = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_gemini_val, "5h: --% | Wk: --%");
+    lv_obj_set_style_text_color(lbl_agy_gemini_val, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_agy_gemini_val, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_agy_gemini_val, LV_ALIGN_TOP_RIGHT, 0, 84);
+
+    bar_agy_gemini = lv_bar_create(card_agy);
+    lv_obj_set_size(bar_agy_gemini, 348, 8);
+    lv_obj_set_pos(bar_agy_gemini, 0, 104);
+    lv_bar_set_range(bar_agy_gemini, 0, 100);
+    lv_obj_set_style_bg_color(bar_agy_gemini, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_agy_gemini, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_agy_gemini, 4, 0);
 
     // =========================================================================
     // 2. TOP PROCESSES CONTAINER (SCREEN 2)
@@ -959,6 +1062,145 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
     lv_obj_set_pos(lbl_ss_sub, 45, 405);
+
+    // =========================================================================
+    // 6. AGY COCKPIT ACCOUNTS LIST CONTAINER (SCREEN 6)
+    // =========================================================================
+    scr_agy = lv_obj_create(parent);
+    lv_obj_set_size(scr_agy, 800, 480);
+    lv_obj_set_pos(scr_agy, 0, 0);
+    lv_obj_set_style_bg_color(scr_agy, COLOR_BG, 0);
+    lv_obj_set_style_border_width(scr_agy, 0, 0);
+    lv_obj_set_style_pad_all(scr_agy, 0, 0);
+    lv_obj_clear_flag(scr_agy, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(scr_agy, LV_OBJ_FLAG_HIDDEN); // Initially hidden
+
+    // 6.1 AGY HEADER BAR
+    lv_obj_t *agy_header = lv_obj_create(scr_agy);
+    lv_obj_set_pos(agy_header, 12, 10);
+    lv_obj_set_size(agy_header, 776, 46);
+    lv_obj_set_style_bg_color(agy_header, COLOR_CARD, 0);
+    lv_obj_set_style_border_color(agy_header, COLOR_CARD_BORDER, 0);
+    lv_obj_set_style_border_width(agy_header, 1, 0);
+    lv_obj_set_style_radius(agy_header, 12, 0);
+    lv_obj_clear_flag(agy_header, LV_OBJ_FLAG_SCROLLABLE);
+
+    // BACK BUTTON
+    lv_obj_t *btn_agy_back = lv_btn_create(agy_header);
+    lv_obj_set_size(btn_agy_back, 110, 34);
+    lv_obj_align(btn_agy_back, LV_ALIGN_LEFT_MID, 4, 0);
+    lv_obj_set_style_bg_color(btn_agy_back, lv_color_hex(0x1E293B), 0);
+    lv_obj_set_style_border_color(btn_agy_back, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_border_width(btn_agy_back, 1, 0);
+    lv_obj_set_style_radius(btn_agy_back, 8, 0);
+    lv_obj_add_event_cb(btn_agy_back, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t *lbl_agy_b = lv_label_create(btn_agy_back);
+    lv_label_set_text(lbl_agy_b, "< BACK");
+    lv_obj_set_style_text_color(lbl_agy_b, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_agy_b, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_agy_b, LV_ALIGN_CENTER, 0, 0);
+
+    lbl_agy_summary_head = lv_label_create(agy_header);
+    lv_label_set_text(lbl_agy_summary_head, "AGY COCKPIT • MULTI-ACCOUNT POOL");
+    lv_obj_set_style_text_color(lbl_agy_summary_head, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_agy_summary_head, &lv_font_montserrat_16, 0);
+    lv_obj_align(lbl_agy_summary_head, LV_ALIGN_CENTER, 30, 0);
+
+    // 6.2 TABLE COLUMN HEADER
+    lv_obj_t *agy_col_bar = lv_obj_create(scr_agy);
+    lv_obj_set_pos(agy_col_bar, 12, 60);
+    lv_obj_set_size(agy_col_bar, 776, 24);
+    lv_obj_set_style_bg_opa(agy_col_bar, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(agy_col_bar, 0, 0);
+    lv_obj_set_style_pad_all(agy_col_bar, 0, 0);
+    lv_obj_clear_flag(agy_col_bar, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t *th_a_name = lv_label_create(agy_col_bar);
+    lv_label_set_text(th_a_name, "ACCOUNT / EMAIL");
+    lv_obj_set_style_text_color(th_a_name, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_a_name, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_a_name, 50, 2);
+
+    lv_obj_t *th_a_status = lv_label_create(agy_col_bar);
+    lv_label_set_text(th_a_status, "STATUS");
+    lv_obj_set_style_text_color(th_a_status, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(th_a_status, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_a_status, 240, 2);
+
+    lv_obj_t *th_a_claude = lv_label_create(agy_col_bar);
+    lv_label_set_text(th_a_claude, "CLAUDE (5H / WK)");
+    lv_obj_set_style_text_color(th_a_claude, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(th_a_claude, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_a_claude, 380, 2);
+
+    lv_obj_t *th_a_gemini = lv_label_create(agy_col_bar);
+    lv_label_set_text(th_a_gemini, "GEMINI (5H / WK)");
+    lv_obj_set_style_text_color(th_a_gemini, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(th_a_gemini, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(th_a_gemini, 590, 2);
+
+    // 6.3 ACCOUNT ROWS (Up to 7 accounts, 52px each, y: 86, 140, 194, 248, 302, 356, 410)
+    for (int i = 0; i < MAX_AGY_ACCOUNTS; i++) {
+        int y_pos = 86 + i * 48;
+        card_agy_rows[i] = create_card(scr_agy, 12, y_pos, 776, 44);
+        lv_obj_add_flag(card_agy_rows[i], LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(card_agy_rows[i], on_agy_row_click, LV_EVENT_CLICKED, s_agy_acc_ids[i]);
+        lv_obj_set_style_border_color(card_agy_rows[i], COLOR_ACCENT_AMBER, LV_STATE_PRESSED);
+
+        // Index / Rank Badge
+        lv_obj_t *lbl_idx = lv_label_create(card_agy_rows[i]);
+        char idx_str[8];
+        snprintf(idx_str, sizeof(idx_str), "#%d", i + 1);
+        lv_label_set_text(lbl_idx, idx_str);
+        lv_obj_set_style_text_color(lbl_idx, COLOR_TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(lbl_idx, &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_idx, 0, 4);
+
+        // Account Name
+        lbl_agy_row_name[i] = lv_label_create(card_agy_rows[i]);
+        lv_label_set_text(lbl_agy_row_name[i], "--");
+        lv_obj_set_style_text_color(lbl_agy_row_name[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_agy_row_name[i], &lv_font_montserrat_14, 0);
+        lv_obj_set_pos(lbl_agy_row_name[i], 36, 4);
+
+        // Active Badge
+        lbl_agy_row_badge[i] = lv_label_create(card_agy_rows[i]);
+        lv_label_set_text(lbl_agy_row_badge[i], "STANDBY");
+        lv_obj_set_style_text_color(lbl_agy_row_badge[i], COLOR_TEXT_MUTED, 0);
+        lv_obj_set_style_text_font(lbl_agy_row_badge[i], &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_agy_row_badge[i], 226, 4);
+
+        // Claude Quota Text & Bar
+        lbl_agy_row_c_val[i] = lv_label_create(card_agy_rows[i]);
+        lv_label_set_text(lbl_agy_row_c_val[i], "5h: --% | Wk: --%");
+        lv_obj_set_style_text_color(lbl_agy_row_c_val[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_agy_row_c_val[i], &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_agy_row_c_val[i], 366, 0);
+
+        bar_agy_row_c[i] = lv_bar_create(card_agy_rows[i]);
+        lv_obj_set_size(bar_agy_row_c[i], 160, 6);
+        lv_obj_set_pos(bar_agy_row_c[i], 366, 16);
+        lv_bar_set_range(bar_agy_row_c[i], 0, 100);
+        lv_obj_set_style_bg_color(bar_agy_row_c[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(bar_agy_row_c[i], COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(bar_agy_row_c[i], 3, 0);
+
+        // Gemini Quota Text & Bar
+        lbl_agy_row_g_val[i] = lv_label_create(card_agy_rows[i]);
+        lv_label_set_text(lbl_agy_row_g_val[i], "5h: --% | Wk: --%");
+        lv_obj_set_style_text_color(lbl_agy_row_g_val[i], COLOR_TEXT_MAIN, 0);
+        lv_obj_set_style_text_font(lbl_agy_row_g_val[i], &lv_font_montserrat_12, 0);
+        lv_obj_set_pos(lbl_agy_row_g_val[i], 576, 0);
+
+        bar_agy_row_g[i] = lv_bar_create(card_agy_rows[i]);
+        lv_obj_set_size(bar_agy_row_g[i], 160, 6);
+        lv_obj_set_pos(bar_agy_row_g[i], 576, 16);
+        lv_bar_set_range(bar_agy_row_g[i], 0, 100);
+        lv_obj_set_style_bg_color(bar_agy_row_g[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
+        lv_obj_set_style_bg_color(bar_agy_row_g[i], COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(bar_agy_row_g[i], 3, 0);
+    }
 }
 
 // Reminder Carousel State
@@ -1263,6 +1505,42 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         }
         lv_label_set_text(lbl_net_up, buf);
     }
+    if (lbl_net_if && (!hasPrev || strcmp(m.net_interface, prev.net_interface) != 0)) {
+        snprintf(buf, sizeof(buf), "Interface: %s", m.net_interface[0] ? m.net_interface : "en0");
+        lv_label_set_text(lbl_net_if, buf);
+    }
+
+    // AGY COCKPIT USAGE (Bottom Right Card)
+    if (lbl_agy_acc && (!hasPrev || strcmp(m.agy_acc, prev.agy_acc) != 0)) {
+        if (m.agy_acc[0] != '\0') {
+            snprintf(buf, sizeof(buf), "ACTIVE: %s", m.agy_acc);
+        } else {
+            snprintf(buf, sizeof(buf), "ACTIVE: --");
+        }
+        lv_label_set_text(lbl_agy_acc, buf);
+    }
+    if (lbl_agy_pool && (!hasPrev || m.agy_ready != prev.agy_ready || m.agy_total != prev.agy_total)) {
+        if (m.agy_total > 0) {
+            snprintf(buf, sizeof(buf), "Pool: %d/%d Ready", m.agy_ready, m.agy_total);
+        } else {
+            snprintf(buf, sizeof(buf), "Pool: --");
+        }
+        lv_label_set_text(lbl_agy_pool, buf);
+    }
+    if (lbl_agy_claude_val && (!hasPrev || m.agy_c_5h != prev.agy_c_5h || m.agy_c_wk != prev.agy_c_wk)) {
+        snprintf(buf, sizeof(buf), "5h: %d%% | Wk: %d%%", m.agy_c_5h, m.agy_c_wk);
+        lv_label_set_text(lbl_agy_claude_val, buf);
+    }
+    if (bar_agy_claude && (!hasPrev || m.agy_c_5h != prev.agy_c_5h)) {
+        lv_bar_set_value(bar_agy_claude, m.agy_c_5h, LV_ANIM_OFF);
+    }
+    if (lbl_agy_gemini_val && (!hasPrev || m.agy_g_5h != prev.agy_g_5h || m.agy_g_wk != prev.agy_g_wk)) {
+        snprintf(buf, sizeof(buf), "5h: %d%% | Wk: %d%%", m.agy_g_5h, m.agy_g_wk);
+        lv_label_set_text(lbl_agy_gemini_val, buf);
+    }
+    if (bar_agy_gemini && (!hasPrev || m.agy_g_5h != prev.agy_g_5h)) {
+        lv_bar_set_value(bar_agy_gemini, m.agy_g_5h, LV_ANIM_OFF);
+    }
 
     // DEDICATED NETWORK MONITOR SCREEN (TX / RX & Interface details)
     if (lbl_net_rx_rate && (!hasPrev || fabsf(m.net_down_kb - prev.net_down_kb) >= 0.5f)) {
@@ -1423,6 +1701,63 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         } else {
             // Hide slot if no drive present
             lv_obj_add_flag(card_disk_slots[i], LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    // AGY MULTI-ACCOUNT POOL SCREEN (Screen 6 Updates)
+    if (lbl_agy_summary_head && (!hasPrev || m.agy_ready != prev.agy_ready || m.agy_total != prev.agy_total)) {
+        if (m.agy_total > 0) {
+            snprintf(buf, sizeof(buf), "AGY COCKPIT • %d ACCOUNTS (%d READY)", m.agy_total, m.agy_ready);
+        } else {
+            snprintf(buf, sizeof(buf), "AGY COCKPIT • MULTI-ACCOUNT POOL");
+        }
+        lv_label_set_text(lbl_agy_summary_head, buf);
+    }
+
+    for (int i = 0; i < MAX_AGY_ACCOUNTS; i++) {
+        if (card_agy_rows[i] == nullptr) continue;
+        if (i < m.agy_account_count) {
+            lv_obj_clear_flag(card_agy_rows[i], LV_OBJ_FLAG_HIDDEN);
+            strncpy(s_agy_acc_ids[i], m.agy_accounts[i].id, sizeof(s_agy_acc_ids[i]) - 1);
+            s_agy_acc_ids[i][sizeof(s_agy_acc_ids[i]) - 1] = '\0';
+
+            // Account Name
+            if (lbl_agy_row_name[i]) {
+                lv_label_set_text(lbl_agy_row_name[i], m.agy_accounts[i].name);
+            }
+
+            // Badge Active / Standby
+            if (lbl_agy_row_badge[i]) {
+                if (m.agy_accounts[i].is_current) {
+                    lv_label_set_text(lbl_agy_row_badge[i], "[AKTIF]");
+                    lv_obj_set_style_text_color(lbl_agy_row_badge[i], COLOR_ACCENT_GREEN, 0);
+                    lv_obj_set_style_border_color(card_agy_rows[i], COLOR_ACCENT_GREEN, 0);
+                } else {
+                    lv_label_set_text(lbl_agy_row_badge[i], "STANDBY");
+                    lv_obj_set_style_text_color(lbl_agy_row_badge[i], COLOR_TEXT_MUTED, 0);
+                    lv_obj_set_style_border_color(card_agy_rows[i], COLOR_CARD_BORDER, 0);
+                }
+            }
+
+            // Claude Values & Bar
+            if (lbl_agy_row_c_val[i]) {
+                snprintf(buf, sizeof(buf), "5h: %d%% | Wk: %d%%", m.agy_accounts[i].c_5h, m.agy_accounts[i].c_wk);
+                lv_label_set_text(lbl_agy_row_c_val[i], buf);
+            }
+            if (bar_agy_row_c[i]) {
+                lv_bar_set_value(bar_agy_row_c[i], m.agy_accounts[i].c_5h, LV_ANIM_OFF);
+            }
+
+            // Gemini Values & Bar
+            if (lbl_agy_row_g_val[i]) {
+                snprintf(buf, sizeof(buf), "5h: %d%% | Wk: %d%%", m.agy_accounts[i].g_5h, m.agy_accounts[i].g_wk);
+                lv_label_set_text(lbl_agy_row_g_val[i], buf);
+            }
+            if (bar_agy_row_g[i]) {
+                lv_bar_set_value(bar_agy_row_g[i], m.agy_accounts[i].g_5h, LV_ANIM_OFF);
+            }
+        } else {
+            lv_obj_add_flag(card_agy_rows[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 

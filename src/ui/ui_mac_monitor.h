@@ -6,6 +6,17 @@
 #define MAX_TOP_PROCESSES 6
 #define MAX_TOP_NET_CONNS 6
 #define MAX_DISKS 4
+#define MAX_AGY_ACCOUNTS 8
+
+struct MacAgyAccountInfo {
+    char id[40];
+    char name[24];
+    bool is_current;
+    uint8_t c_5h;
+    uint8_t c_wk;
+    uint8_t g_5h;
+    uint8_t g_wk;
+};
 
 struct MacProcessInfo {
     char name[24];
@@ -69,6 +80,18 @@ struct MacSystemMetrics {
 
     uint8_t disk_count;
     MacDiskInfo disks[MAX_DISKS];
+
+    // Antigravity Cockpit Metrics
+    char agy_acc[24];
+    uint8_t agy_c_5h;
+    uint8_t agy_c_wk;
+    uint8_t agy_g_5h;
+    uint8_t agy_g_wk;
+    uint8_t agy_ready;
+    uint8_t agy_total;
+
+    uint8_t agy_account_count;
+    MacAgyAccountInfo agy_accounts[MAX_AGY_ACCOUNTS];
 };
 
 class UIMacMonitor {
@@ -80,6 +103,7 @@ public:
     static void showNetConnections();
     static void showStorage();
     static void showScreensaver();
+    static void showAgyAccounts();
     static void tickReminders();
 };
 

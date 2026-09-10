@@ -6,6 +6,7 @@ Streams real-time CPU, Temperature (CPU & GPU via smctemp), RAM, Disk, Network I
 
 import time
 import os
+import glob
 import json
 import shutil
 import subprocess
@@ -196,6 +197,317 @@ def find_esp32_port():
         if "usbmodem" in dev or "usbserial" in dev or "espressif" in desc:
             return port.device
     return None
+
+def get_agy_cockpit_metrics():
+    """Extract multi-account usage & current active account from Antigravity Cockpit Tools."""
+    acc_path = os.path.expanduser('~/.antigravity_cockpit/accounts.json')
+    if not os.path.exists(acc_path):
+        return None
+    try:
+        with open(acc_path) as f:
+            acc_data = json.load(f)
+        current_id = acc_data.get('current_account_id')
+        accounts = acc_data.get('accounts', [])
+
+        curr_email = 'Unknown'
+        for a in accounts:
+            if a.get('id') == current_id:
+                curr_email = a.get('email', 'Unknown')
+                break
+
+        cache_pattern = os.path.expanduser('~/.antigravity_cockpit/cache/quota_api_v1_desktop/authorized/*.json')
+        cache_files = glob.glob(cache_pattern)
+
+        # Parse quota cache map by email
+        quota_by_email = {}
+        pool_ready = 0
+
+        for p in cache_files:
+            try:
+                with open(p) as f:
+                    d = json.load(f)
+                    email = d.get('email')
+                    summary = d.get('payload', {}).get('quota_summary', {})
+                    groups = summary.get('groups', [])
+
+                    acc_c_5h = 100
+                    acc_c_wk = 100
+                    acc_g_5h = 100
+                    acc_g_wk = 100
+                    for g in groups:
+                        is_gemini = 'Gemini' in g.get('displayName', '')
+                        for b in g.get('buckets', []):
+                            w = b.get('window')
+                            pct = int(b.get('remainingFraction', 1.0) * 100)
+                            if is_gemini:
+                                if w == '5h': acc_g_5h = pct
+                                elif w == 'weekly': acc_g_wk = pct
+                            else:
+                                if w == '5h': acc_c_5h = pct
+                                elif w == 'weekly': acc_c_wk = pct
+                    quota_by_email[email] = {
+                        'c_5h': acc_c_5h, 'c_wk': acc_c_wk,
+                        'g_5h': acc_g_5h, 'g_wk': acc_g_wk
+                    }
+                    if acc_c_5h > 0 and acc_g_5h > 0:
+                        pool_ready += 1
+            except Exception:
+                pass
+
+        curr_q = quota_by_email.get(curr_email, {'c_5h': 100, 'c_wk': 100, 'g_5h': 100, 'g_wk': 100})
+        short_name = curr_email.split('@')[0] if '@' in curr_email else curr_email
+
+        # Build account list
+        acc_list = []
+        for a in accounts[:8]:
+            email = a.get('email', '')
+            acc_id = a.get('id', '')
+            q = quota_by_email.get(email, {'c_5h': 100, 'c_wk': 100, 'g_5h': 100, 'g_wk': 100})
+            is_cur = 1 if acc_id == current_id else 0
+            acc_list.append({
+                'id': acc_id,
+                'n': email.split('@')[0][:14],
+                'cur': is_cur,
+                'c_5h': q['c_5h'],
+                'c_wk': q['c_wk'],
+                'g_5h': q['g_5h'],
+                'g_wk': q['g_wk']
+            })
+
+        return {
+            'acc': short_name[:16],
+            'c_5h': curr_q['c_5h'],
+            'c_wk': curr_q['c_wk'],
+            'g_5h': curr_q['g_5h'],
+            'g_wk': curr_q['g_wk'],
+            'ready': pool_ready,
+            'total': len(accounts),
+            'list': acc_list
+        }
+    except Exception:
+        return None
+
+def make_user_status_proto(email):
+    """Generate protobuf base64 string for antigravityUnifiedStateSync.userStatus."""
+    from base64 import b64encode
+    inner1 = b"\x1a" + bytes([len(email)]) + email.encode()
+    b64_1 = b64encode(inner1).decode()
+    inner2 = b":" + bytes([len(email)]) + email.encode()
+    b64_2 = b64encode(inner2).decode()
+    combined_str = b64_1 + b64_2
+    proto_data = bytes([0x0a, len(combined_str)]) + combined_str.encode()
+    field2 = bytes([0x12, len(proto_data)]) + proto_data
+    sentinel = b"userStatusSentinelKey"
+    field1 = bytes([0x0a, len(sentinel)]) + sentinel
+    full_body = field1 + field2
+    wrapper = bytes([0x0a, len(full_body)]) + full_body
+    return b64encode(wrapper).decode()
+
+def sync_antigravity_user_status(target_account_id):
+    """Sync target email into antigravityUnifiedStateSync.userStatus in state.vscdb."""
+    acc_path = os.path.expanduser('~/.antigravity_cockpit/accounts.json')
+    if not os.path.exists(acc_path):
+        return
+    try:
+        with open(acc_path) as f:
+            data = json.load(f)
+        target_email = None
+        for a in data.get('accounts', []):
+            if a.get('id') == target_account_id:
+                target_email = a.get('email')
+                break
+        if not target_email:
+            return
+
+        b64_val = make_user_status_proto(target_email)
+        import sqlite3
+        for db_path in [
+            os.path.expanduser('~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb'),
+            os.path.expanduser('~/Library/Application Support/Antigravity IDE/User/globalStorage/state.vscdb')
+        ]:
+            if os.path.exists(db_path):
+                conn = sqlite3.connect(db_path)
+                c = conn.cursor()
+                c.execute('UPDATE ItemTable SET value = ? WHERE key = "antigravityUnifiedStateSync.userStatus"', (b64_val,))
+                conn.commit()
+                conn.close()
+                print(f"[SWITCH] Synced userStatus to {target_email} in {db_path}")
+    except Exception as e:
+        print(f"[SWITCH ERROR] Failed to sync userStatus: {e}")
+
+def inject_account_to_keychain(target_account_id):
+    """Decrypt account token envelope from Cockpit and inject into macOS Keychain and jetski token."""
+    key_path = os.path.expanduser('~/.antigravity_cockpit/secure-account-storage.key')
+    env_path = os.path.expanduser(f'~/.antigravity_cockpit/accounts/{target_account_id}.json')
+    if not os.path.exists(key_path) or not os.path.exists(env_path):
+        return False
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from datetime import datetime, timezone
+        import base64
+
+        with open(key_path) as f:
+            key = base64.b64decode(f.read().strip())
+
+        with open(env_path) as f:
+            envelope = json.load(f)
+
+        nonce = base64.b64decode(envelope['nonce'])
+        ciphertext = base64.b64decode(envelope['ciphertext'])
+        aesgcm = AESGCM(key)
+        data = json.loads(aesgcm.decrypt(nonce, ciphertext, None))
+
+        tok = data.get('token', {})
+        target_email = data.get('email', '')
+        if not tok.get('access_token'):
+            print(f"[SWITCH ERROR] Token missing for {target_email}")
+            return False
+
+        expiry_ts = tok.get('expiry_timestamp', int(time.time() + 3600))
+        expiry_dt = datetime.fromtimestamp(expiry_ts, tz=timezone.utc)
+        expiry_str = expiry_dt.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
+
+        keyring_payload = {
+            "token": {
+                "access_token": tok["access_token"],
+                "token_type": tok.get("token_type", "Bearer"),
+                "refresh_token": tok.get("refresh_token", ""),
+                "expiry": expiry_str
+            },
+            "auth_method": "consumer"
+        }
+
+        # 1. Update macOS Keychain (gemini / antigravity)
+        encoded_blob = "go-keyring-base64:" + base64.b64encode(json.dumps(keyring_payload).encode()).decode()
+        subprocess.check_call([
+            "security", "add-generic-password",
+            "-U",
+            "-s", "gemini",
+            "-a", "antigravity",
+            "-w", encoded_blob
+        ])
+
+        # 2. Update ~/.gemini/jetski-standalone-oauth-token
+        jetski_path = os.path.expanduser('~/.gemini/jetski-standalone-oauth-token')
+        with open(jetski_path, 'w') as f:
+            json.dump(keyring_payload, f, indent=2)
+
+        # 3. Update ~/.gemini/google_accounts.json
+        gacc_path = os.path.expanduser('~/.gemini/google_accounts.json')
+        with open(gacc_path, 'w') as f:
+            json.dump({"active": target_email, "old": []}, f, indent=2)
+
+        print(f"[SWITCH] Successfully injected {target_email} into Keychain and Gemini configs!")
+        return True
+    except Exception as e:
+        print(f"[SWITCH ERROR] Failed to inject token into keychain: {e}")
+        return False
+
+def switch_cockpit_account(target_account_id):
+    """Switch active Antigravity account in Cockpit Tools via WebSocket and reload session."""
+    server_json_path = os.path.expanduser('~/.antigravity_cockpit/server.json')
+    if not os.path.exists(server_json_path):
+        print(f"[SWITCH] server.json not found")
+        return False
+    try:
+        with open(server_json_path) as f:
+            cfg = json.load(f)
+
+        port = cfg['ws_port']
+        token = cfg['auth_token']
+
+        s = socket.socket()
+        s.settimeout(5.0)
+        s.connect(('127.0.0.1', port))
+
+        handshake = (
+            f"GET /?token={token} HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{port}\r\n"
+            f"Upgrade: websocket\r\n"
+            f"Connection: Upgrade\r\n"
+            f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            f"Sec-WebSocket-Version: 13\r\n\r\n"
+        )
+        s.sendall(handshake.encode())
+        s.recv(1024) # handshake response
+        try:
+            s.recv(1024) # initial event.ready
+        except Exception:
+            pass
+
+        # Build masked websocket frame
+        import struct
+        data = json.dumps({
+            'type': 'request.switch_account',
+            'payload': {
+                'request_id': f"hud-sw-{int(time.time())}",
+                'account_id': target_account_id
+            }
+        }).encode()
+
+        length = len(data)
+        frame = bytearray([0x81])
+        mask = b'\x12\x34\x56\x78'
+        if length <= 125:
+            frame.append(0x80 | length)
+        elif length <= 65535:
+            frame.append(0x80 | 126)
+            frame.extend(struct.pack('>H', length))
+        frame.extend(mask)
+        frame.extend(bytearray(b ^ mask[i % 4] for i, b in enumerate(data)))
+
+        s.sendall(bytes(frame))
+        time.sleep(0.5)
+        try:
+            resp = s.recv(2048)
+            print(f"[SWITCH] Cockpit responded: {resp[:120]}")
+        except Exception:
+            pass
+        s.close()
+
+        # 1. Update antigravity_legacy_instances.json (Legacy Antigravity bindAccountId)
+        legacy_inst_path = os.path.expanduser('~/.antigravity_cockpit/antigravity_legacy_instances.json')
+        if os.path.exists(legacy_inst_path):
+            try:
+                with open(legacy_inst_path) as f:
+                    leg_data = json.load(f)
+                if 'defaultSettings' not in leg_data:
+                    leg_data['defaultSettings'] = {}
+                leg_data['defaultSettings']['bindAccountId'] = target_account_id
+                with open(legacy_inst_path, 'w') as f:
+                    json.dump(leg_data, f, indent=2)
+                print(f"[SWITCH] Updated legacy instances bindAccountId to {target_account_id}")
+            except Exception as e:
+                print(f"[SWITCH ERROR] Failed to update legacy instances: {e}")
+
+        # 2. Sync userStatus in state.vscdb
+        sync_antigravity_user_status(target_account_id)
+
+        # 3. Inject token envelope directly into macOS Keychain & Gemini configs
+        inject_account_to_keychain(target_account_id)
+
+        # 4. Cleanly kill and relaunch Antigravity (replicating Cockpit play button)
+        try:
+            # Terminate all Antigravity processes cleanly
+            subprocess.run(['killall', 'Antigravity'], stderr=subprocess.DEVNULL)
+            # Give macOS time to fully reap the processes
+            for _ in range(15):
+                check = subprocess.run(['pgrep', '-x', 'Antigravity'], stdout=subprocess.DEVNULL)
+                if check.returncode != 0:
+                    break
+                time.sleep(0.2)
+            time.sleep(1.0)
+            
+            # Relaunch fresh instance
+            subprocess.run(['open', '-n', '-a', '/Applications/Antigravity.app'])
+            print("[SWITCH] Antigravity process cleanly restarted with new account.")
+        except Exception as e:
+            print(f"[SWITCH] Error restarting Antigravity: {e}")
+
+        return True
+    except Exception as e:
+        print(f"[SWITCH ERROR] Failed to switch account: {e}")
+        return False
 
 def get_chip_name():
     try:
@@ -506,6 +818,7 @@ def main():
                 top_conns = get_network_connections(limit=2)
                 weather = get_weather_info()
                 rems_val = get_macos_reminders()[:100]
+                agy_info = get_agy_cockpit_metrics()
                 payload = {
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
@@ -535,7 +848,8 @@ def main():
                     "w_loc": weather.get("loc", "Bekasi"),
                     "procs": top_procs,
                     "conns": top_conns,
-                    "disks": all_disks[:2]
+                    "disks": all_disks[:2],
+                    "agy": agy_info
                 }
 
                 line = json.dumps(payload, separators=(',', ':')) + "\n"
@@ -545,7 +859,14 @@ def main():
                 time.sleep(0.1)
                 ack = ""
                 if ser.in_waiting > 0:
-                    ack = ser.read(ser.in_waiting).decode("utf-8", errors="ignore").strip()
+                    raw_in = ser.read(ser.in_waiting).decode("utf-8", errors="ignore").strip()
+                    ack = raw_in
+                    for in_line in raw_in.splitlines():
+                        in_line = in_line.strip()
+                        if in_line.startswith("CMD:SWITCH_AGY:"):
+                            target_id = in_line.replace("CMD:SWITCH_AGY:", "").strip()
+                            print(f"\n[HUD TRIGGER] Switching AGY account requested for: {target_id}")
+                            switch_cockpit_account(target_id)
 
                 print(f"[STREAM] CPU: {payload['cpu']}% | Temp: {payload['cpu_temp']}C | RAM: {payload['ram_pct']}% | Uptime: {payload['uptime']} | ACK: {ack}", flush=True)
 

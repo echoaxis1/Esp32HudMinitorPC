@@ -168,6 +168,48 @@ void processMacMetricsJson(const char *jsonStr) {
         }
     }
 
+    // Antigravity Cockpit Parsing
+    if (doc["agy"].is<JsonObject>()) {
+        JsonObject a = doc["agy"].as<JsonObject>();
+        const char *acc_name = a["acc"] | "--";
+        strncpy(latestMetrics.agy_acc, acc_name, sizeof(latestMetrics.agy_acc) - 1);
+        latestMetrics.agy_acc[sizeof(latestMetrics.agy_acc) - 1] = '\0';
+        latestMetrics.agy_c_5h = a["c_5h"] | 100;
+        latestMetrics.agy_c_wk = a["c_wk"] | 100;
+        latestMetrics.agy_g_5h = a["g_5h"] | 100;
+        latestMetrics.agy_g_wk = a["g_wk"] | 100;
+        latestMetrics.agy_ready = a["ready"] | 0;
+        latestMetrics.agy_total = a["total"] | 0;
+
+        latestMetrics.agy_account_count = 0;
+        if (a["list"].is<JsonArray>()) {
+            for (JsonObject acc : a["list"].as<JsonArray>()) {
+                int idx = latestMetrics.agy_account_count;
+                const char *id_str = acc["id"] | "";
+                strncpy(latestMetrics.agy_accounts[idx].id, id_str, sizeof(latestMetrics.agy_accounts[idx].id) - 1);
+                latestMetrics.agy_accounts[idx].id[sizeof(latestMetrics.agy_accounts[idx].id) - 1] = '\0';
+                const char *n = acc["n"] | "--";
+                strncpy(latestMetrics.agy_accounts[idx].name, n, sizeof(latestMetrics.agy_accounts[idx].name) - 1);
+                latestMetrics.agy_accounts[idx].name[sizeof(latestMetrics.agy_accounts[idx].name) - 1] = '\0';
+                latestMetrics.agy_accounts[idx].is_current = (acc["cur"] | 0) == 1;
+                latestMetrics.agy_accounts[idx].c_5h = acc["c_5h"] | 100;
+                latestMetrics.agy_accounts[idx].c_wk = acc["c_wk"] | 100;
+                latestMetrics.agy_accounts[idx].g_5h = acc["g_5h"] | 100;
+                latestMetrics.agy_accounts[idx].g_wk = acc["g_wk"] | 100;
+                latestMetrics.agy_account_count++;
+            }
+        }
+    } else {
+        latestMetrics.agy_acc[0] = '\0';
+        latestMetrics.agy_c_5h = 100;
+        latestMetrics.agy_c_wk = 100;
+        latestMetrics.agy_g_5h = 100;
+        latestMetrics.agy_g_wk = 100;
+        latestMetrics.agy_ready = 0;
+        latestMetrics.agy_total = 0;
+        latestMetrics.agy_account_count = 0;
+    }
+
     metricsReady = true;
     Serial.println("ACK:OK");
 }
