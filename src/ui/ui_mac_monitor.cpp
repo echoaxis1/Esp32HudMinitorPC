@@ -92,7 +92,11 @@ static lv_obj_t *lbl_d_subtitles[MAX_DISKS];
 static lv_obj_t *lbl_ss_time = nullptr;
 static lv_obj_t *lbl_ss_date = nullptr;
 static lv_obj_t *lbl_ss_reminders = nullptr;
-static lv_obj_t *lbl_ss_sub = nullptr;
+static lv_obj_t *lbl_ss_agy_title = nullptr;
+static lv_obj_t *bar_ss_agy_g = nullptr;
+static lv_obj_t *lbl_ss_agy_g = nullptr;
+static lv_obj_t *bar_ss_agy_c = nullptr;
+static lv_obj_t *lbl_ss_agy_c = nullptr;
 static lv_obj_t *ss_sun = nullptr;
 static lv_obj_t *lbl_ss_wtemp = nullptr;
 static lv_obj_t *lbl_ss_wdesc = nullptr;
@@ -1018,11 +1022,52 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_flag(lbl_ss_reminders, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_ss_reminders, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
-    lbl_ss_sub = lv_label_create(scr_screensaver);
-    lv_label_set_text(lbl_ss_sub, "Sentuh layar untuk membuka HUD Monitor");
-    lv_obj_set_style_text_color(lbl_ss_sub, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(lbl_ss_sub, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_ss_sub, 45, 405);
+    // 5.6 Active AGY Account Token Bar on Screensaver
+    lbl_ss_agy_title = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_agy_title, "AGY: --");
+    lv_obj_set_style_text_color(lbl_ss_agy_title, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_ss_agy_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_ss_agy_title, 45, 395);
+    lv_obj_add_flag(lbl_ss_agy_title, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_agy_title, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    // Gemini Bar & Label (Neon Cyan)
+    bar_ss_agy_g = lv_bar_create(scr_screensaver);
+    lv_obj_set_size(bar_ss_agy_g, 180, 6);
+    lv_obj_set_pos(bar_ss_agy_g, 45, 415);
+    lv_bar_set_range(bar_ss_agy_g, 0, 100);
+    lv_obj_set_style_bg_color(bar_ss_agy_g, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_ss_agy_g, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_ss_agy_g, 3, 0);
+    lv_obj_add_flag(bar_ss_agy_g, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(bar_ss_agy_g, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lbl_ss_agy_g = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_agy_g, "GEMINI 5h: --%");
+    lv_obj_set_style_text_color(lbl_ss_agy_g, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_ss_agy_g, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_ss_agy_g, 45, 427);
+    lv_obj_add_flag(lbl_ss_agy_g, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_agy_g, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    // Claude Bar & Label (Sun Amber)
+    bar_ss_agy_c = lv_bar_create(scr_screensaver);
+    lv_obj_set_size(bar_ss_agy_c, 180, 6);
+    lv_obj_set_pos(bar_ss_agy_c, 255, 415);
+    lv_bar_set_range(bar_ss_agy_c, 0, 100);
+    lv_obj_set_style_bg_color(bar_ss_agy_c, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(bar_ss_agy_c, COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
+    lv_obj_set_style_radius(bar_ss_agy_c, 3, 0);
+    lv_obj_add_flag(bar_ss_agy_c, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(bar_ss_agy_c, on_back_btn_click, LV_EVENT_CLICKED, NULL);
+
+    lbl_ss_agy_c = lv_label_create(scr_screensaver);
+    lv_label_set_text(lbl_ss_agy_c, "CLAUDE 5h: --%");
+    lv_obj_set_style_text_color(lbl_ss_agy_c, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_ss_agy_c, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_ss_agy_c, 255, 427);
+    lv_obj_add_flag(lbl_ss_agy_c, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_ss_agy_c, on_back_btn_click, LV_EVENT_CLICKED, NULL);
 
     // =========================================================================
     // 6. AGY COCKPIT ACCOUNTS LIST CONTAINER (SCREEN 6 - MODULAR COMPONENT)
@@ -1367,6 +1412,30 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     }
     if (bar_agy_gemini && (!hasPrev || m.agy_g_5h != prev.agy_g_5h)) {
         lv_bar_set_value(bar_agy_gemini, m.agy_g_5h, LV_ANIM_OFF);
+    }
+
+    // Screensaver Standby AGY Token Widgets Update
+    if (lbl_ss_agy_title && (!hasPrev || strcmp(m.agy_acc, prev.agy_acc) != 0 || m.agy_ready != prev.agy_ready)) {
+        if (m.agy_acc[0] != '\0') {
+            snprintf(buf, sizeof(buf), "AGY: %s  (Pool: %d Ready)", m.agy_acc, m.agy_ready);
+        } else {
+            snprintf(buf, sizeof(buf), "AGY: --");
+        }
+        lv_label_set_text(lbl_ss_agy_title, buf);
+    }
+    if (bar_ss_agy_g && (!hasPrev || m.agy_g_5h != prev.agy_g_5h)) {
+        lv_bar_set_value(bar_ss_agy_g, m.agy_g_5h, LV_ANIM_OFF);
+    }
+    if (lbl_ss_agy_g && (!hasPrev || m.agy_g_5h != prev.agy_g_5h || m.agy_g_wk != prev.agy_g_wk)) {
+        snprintf(buf, sizeof(buf), "GEMINI 5h: %d%% | Wk: %d%%", m.agy_g_5h, m.agy_g_wk);
+        lv_label_set_text(lbl_ss_agy_g, buf);
+    }
+    if (bar_ss_agy_c && (!hasPrev || m.agy_c_5h != prev.agy_c_5h)) {
+        lv_bar_set_value(bar_ss_agy_c, m.agy_c_5h, LV_ANIM_OFF);
+    }
+    if (lbl_ss_agy_c && (!hasPrev || m.agy_c_5h != prev.agy_c_5h || m.agy_c_wk != prev.agy_c_wk)) {
+        snprintf(buf, sizeof(buf), "CLAUDE 5h: %d%% | Wk: %d%%", m.agy_c_5h, m.agy_c_wk);
+        lv_label_set_text(lbl_ss_agy_c, buf);
     }
 
     // DEDICATED NETWORK MONITOR SCREEN (TX / RX & Interface details)
