@@ -145,6 +145,21 @@ sequenceDiagram
   `/Users/echoaxis/Projects/Esp32/Esp32HudMonitorPC/.venv/bin/python3`
 - Library `cryptography` terpasang di venv ini. Jika script dijalankan dengan global Python tanpa virtualenv, import `from cryptography.hazmat...` akan menghasilkan `ModuleNotFoundError`.
 
+### 4. Modularitas UI LVGL (Prinsip Clean Code & SRP)
+- Halaman AGY Cockpit dipecah menjadi modul independen di `src/ui/ui_screen_agy_cockpit.h` dan `ui_screen_agy_cockpit.cpp`.
+- Token warna dan helper pembuatan kartu diisolasi pada `src/ui/ui_theme.h`.
+- Koordinator utama `UIMacMonitor` mendelegasikan inisialisasi dan update metrik tanpa intervensi state internal AGY.
+
+### 5. Algoritma Pengurutan Akun (Gemini Quota Descending)
+- Pada `tools/mac_monitor_bridge.py`, daftar akun diurutkan sebelum dikirim ke ESP32 agar akun dengan kapasitas kuota terbanyak selalu muncul di baris teratas HUD:
+  ```python
+  acc_list.sort(key=lambda x: (x['g_5h'], x['g_wk'], x['c_5h']), reverse=True)
+  ```
+- Prioritas sorting:
+  1. Kuota **Gemini 5-Hour** (`g_5h` descending).
+  2. Kuota **Gemini Weekly** (`g_wk` descending).
+  3. Kuota **Claude 5-Hour** (`c_5h` descending).
+
 ---
 
 ## 5. Implementasi Kode Referensi

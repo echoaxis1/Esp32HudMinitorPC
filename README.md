@@ -32,7 +32,8 @@ Esp32HudMonitorPC/
 ├── .gitignore                      # Filter berkas artefak build (.pio, .venv, pycache)
 ├── README.md                       # Dokumentasi utama proyek
 ├── docs/
-│   └── ESP32S3_RGB_TEARING_POSTMORTEM.md # Dokumentasi mendalam analisis error glitch/tearing
+│   ├── ESP32S3_RGB_TEARING_POSTMORTEM.md       # Dokumentasi mendalam analisis error glitch/tearing
+│   └── ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md # Arsitektur autentikasi & switch akun AGY via HUD
 ├── include/
 │   ├── board_config.h              # Definisi pinout ST7262 RGB, I2C CH422G, dan GT911
 │   └── lv_conf.h                   # Konfigurasi engine grafis LVGL & custom font montserrat
@@ -42,12 +43,14 @@ Esp32HudMonitorPC/
 │   │   ├── ch422g.h / .cpp         # Driver kontroler CH422G IO expander via I2C
 │   │   └── display.h / .cpp        # Inisialisasi panel RGB ST7262 & double buffer LVGL
 │   ├── ui/
-│   │   ├── ui_mac_monitor.h / .cpp # Dashboard Mac Monitor Cyberpunk (6 kartu metrik)
+│   │   ├── ui_mac_monitor.h / .cpp # Dashboard Mac Monitor Cyberpunk & Screen Coordinator
+│   │   ├── ui_screen_agy_cockpit.h / .cpp # Modul UI Layar Pool Akun AGY & Switch Event (SRP)
+│   │   ├── ui_theme.h              # Token warna dan shared component helper
 │   │   └── ui_avatar.h / .cpp      # Template UI avatar robotik pendamping terminal
 │   └── network/
 │       └── wifi_manager.h / .cpp   # Modul opsional komunikasi nirkabel (Wi-Fi/WebSockets)
 └── tools/
-    ├── mac_monitor_bridge.py       # Daemon pengumpul & pengirim data metrik macOS via Serial
+    ├── mac_monitor_bridge.py       # Daemon pengumpul metrik, enkripsi/keychain injector & serial
     └── agy_bridge.py               # Daemon alternatif untuk integrasi Antigravity CLI
 ```
 

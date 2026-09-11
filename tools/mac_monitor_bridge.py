@@ -259,7 +259,7 @@ def get_agy_cockpit_metrics():
 
         # Build account list
         acc_list = []
-        for a in accounts[:8]:
+        for a in accounts:
             email = a.get('email', '')
             acc_id = a.get('id', '')
             q = quota_by_email.get(email, {'c_5h': 100, 'c_wk': 100, 'g_5h': 100, 'g_wk': 100})
@@ -273,6 +273,11 @@ def get_agy_cockpit_metrics():
                 'g_5h': q['g_5h'],
                 'g_wk': q['g_wk']
             })
+
+        # Sort accounts: Gemini kuota terbanyak (g_5h desc, g_wk desc, c_5h desc)
+        # Akun aktif tetap terlihat prioritas atau terurut jelas
+        acc_list.sort(key=lambda x: (x['g_5h'], x['g_wk'], x['c_5h']), reverse=True)
+        acc_list = acc_list[:8]
 
         return {
             'acc': short_name[:16],
