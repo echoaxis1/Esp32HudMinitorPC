@@ -1123,16 +1123,19 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     static bool hasPrev = false;
 
     // SCREEN SAVER / STANDBY AUTO TRANSITION
-    // Triggered when Mac screen is locked or asleep (m.display_off), with fallback to GPU inactive
+    // Triggered strictly when Mac screen is locked or asleep (m.display_off)
     static bool inScreensaver = false;
-    bool shouldBeInScreensaver = m.display_off || (m.gpu_temp <= 0.0f);
-    if (shouldBeInScreensaver) {
-        if (!inScreensaver) {
+    static int ss_counter = 0;
+
+    if (m.display_off) {
+        if (ss_counter < 2) ss_counter++;
+        if (ss_counter >= 2 && !inScreensaver) {
             inScreensaver = true;
             UIMacMonitor::showScreensaver();
         }
     } else {
-        if (inScreensaver) {
+        if (ss_counter > 0) ss_counter--;
+        if (ss_counter == 0 && inScreensaver) {
             inScreensaver = false;
             UIMacMonitor::showDashboard();
         }
