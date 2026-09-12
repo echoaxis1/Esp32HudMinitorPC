@@ -941,6 +941,7 @@ def main():
 
             while True:
                 cpu_pct = psutil.cpu_percent(interval=None)
+                cores_pct = [round(c, 1) for c in psutil.cpu_percent(percpu=True, interval=None)[:10]]
                 ram_pct, ram_used, ram_total = get_macos_memory()
                 cpu_temp, gpu_temp = get_temperatures()
                 disk_pct, disk_free_gb, disk_used_gb, disk_total_gb, all_disks = get_macos_storage()
@@ -998,6 +999,7 @@ def main():
                     "cpu": round(cpu_pct, 1),
                     "cpu_temp": cpu_temp,
                     "gpu_temp": gpu_temp,
+                    "cores": cores_pct,
                     "ram_pct": ram_pct,
                     "ram_used": ram_used,
                     "ram_total": ram_total,

@@ -7,6 +7,7 @@
 #define MAX_TOP_NET_CONNS 6
 #define MAX_DISKS 4
 #define MAX_AGY_ACCOUNTS 8
+#define MAX_CPU_CORES 10
 
 struct MacAgyAccountInfo {
     char id[40];
@@ -26,7 +27,7 @@ struct MacProcessInfo {
 };
 
 struct MacNetConnInfo {
-    char name[24];
+    char name[20];
     int pid;
     char remote[28];
     char status[12];
@@ -45,6 +46,8 @@ struct MacSystemMetrics {
     float cpu_pct;
     float cpu_temp;
     float gpu_temp;
+    uint8_t core_count;
+    float core_pcts[MAX_CPU_CORES];
     float ram_pct;
     float ram_used_gb;
     float ram_total_gb;

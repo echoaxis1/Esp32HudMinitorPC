@@ -26,6 +26,7 @@ static lv_obj_t *card_cpu = nullptr;
 static lv_obj_t *arc_cpu = nullptr;
 static lv_obj_t *lbl_cpu_val = nullptr;
 static lv_obj_t *lbl_cpu_temp = nullptr;
+static lv_obj_t *bar_cpu_cores[MAX_CPU_CORES];
 
 // Dashboard RAM Widgets
 static lv_obj_t *arc_ram = nullptr;
@@ -241,31 +242,65 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(title_cpu, &lv_font_montserrat_14, 0);
     lv_obj_align(title_cpu, LV_ALIGN_TOP_LEFT, 0, 0);
 
+    lv_obj_t *lbl_cpu_arch = lv_label_create(card_cpu);
+    lv_label_set_text(lbl_cpu_arch, "4P+6E");
+    lv_obj_set_style_text_color(lbl_cpu_arch, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_cpu_arch, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_cpu_arch, LV_ALIGN_TOP_RIGHT, 0, 2);
+
     arc_cpu = lv_arc_create(card_cpu);
-    lv_obj_set_size(arc_cpu, 130, 130);
+    lv_obj_set_size(arc_cpu, 115, 115);
     lv_arc_set_rotation(arc_cpu, 135);
     lv_arc_set_bg_angles(arc_cpu, 0, 270);
     lv_arc_set_range(arc_cpu, 0, 100);
     lv_arc_set_value(arc_cpu, 0);
     lv_obj_set_style_arc_color(arc_cpu, lv_color_hex(0x1E293B), LV_PART_MAIN);
-    lv_obj_set_style_arc_width(arc_cpu, 12, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc_cpu, 10, LV_PART_MAIN);
     lv_obj_set_style_arc_color(arc_cpu, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_width(arc_cpu, 12, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(arc_cpu, 10, LV_PART_INDICATOR);
     lv_obj_remove_style(arc_cpu, NULL, LV_PART_KNOB);
     lv_obj_clear_flag(arc_cpu, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_align(arc_cpu, LV_ALIGN_CENTER, 0, 4);
+    lv_obj_set_pos(arc_cpu, 5, 26);
 
     lbl_cpu_val = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_val, "0.0%");
     lv_obj_set_style_text_color(lbl_cpu_val, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_24, 0);
-    lv_obj_align(lbl_cpu_val, LV_ALIGN_CENTER, 0, -2);
+    lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_20, 0);
+    lv_obj_set_pos(lbl_cpu_val, 34, 62);
 
     lbl_cpu_temp = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_temp, "Core: -- C");
     lv_obj_set_style_text_color(lbl_cpu_temp, COLOR_ACCENT_CORAL, 0);
     lv_obj_set_style_text_font(lbl_cpu_temp, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_cpu_temp, LV_ALIGN_CENTER, 0, 22);
+    lv_obj_set_pos(lbl_cpu_temp, 34, 88);
+
+    // 10-CORE GRAPHIC BAR EQUALIZER (At Right Side / Bottom of Card)
+    // 4 P-Cores (Cyan/Amber) + 6 E-Cores (Blue/Slate)
+    // Area: x = 126..220, y = 30..144 (height = 114)
+    for (int i = 0; i < MAX_CPU_CORES; i++) {
+        bar_cpu_cores[i] = lv_bar_create(card_cpu);
+        lv_obj_set_size(bar_cpu_cores[i], 6, 105);
+        lv_obj_set_pos(bar_cpu_cores[i], 128 + (i * 9), 32);
+        lv_bar_set_range(bar_cpu_cores[i], 0, 100);
+        lv_bar_set_value(bar_cpu_cores[i], 0, LV_ANIM_OFF);
+        lv_obj_set_style_bg_color(bar_cpu_cores[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
+        lv_obj_set_style_radius(bar_cpu_cores[i], 2, LV_PART_MAIN);
+        lv_obj_set_style_radius(bar_cpu_cores[i], 2, LV_PART_INDICATOR);
+
+        // Core 0-3: Performance Cores (Cyan/Coral), Core 4-9: Efficiency Cores (Green/Blue)
+        if (i < 4) {
+            lv_obj_set_style_bg_color(bar_cpu_cores[i], COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+        } else {
+            lv_obj_set_style_bg_color(bar_cpu_cores[i], COLOR_ACCENT_GREEN, LV_PART_INDICATOR);
+        }
+    }
+
+    // Core Label Indicators below the 10 bars
+    lv_obj_t *lbl_cores_tag = lv_label_create(card_cpu);
+    lv_label_set_text(lbl_cores_tag, "P1-P4   |   E1-E6");
+    lv_obj_set_style_text_color(lbl_cores_tag, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_cores_tag, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_cores_tag, 126, 142);
 
     // 1.3 RAM / MEMORY CARD (Top Middle: 245 x 220)
     lv_obj_t *card_ram = create_card(scr_dashboard, 277, 66, 245, 220);
@@ -1273,6 +1308,20 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
             snprintf(buf, sizeof(buf), "Core: -- C");
         }
         lv_label_set_text(lbl_cpu_temp, buf);
+    }
+
+    // 10-CORE EQUALIZER UPDATE (Differential check)
+    for (int i = 0; i < MAX_CPU_CORES; i++) {
+        if (bar_cpu_cores[i]) {
+            if (i < m.core_count) {
+                int val = (int)roundf(m.core_pcts[i]);
+                if (val < 0) val = 0;
+                if (val > 100) val = 100;
+                if (!hasPrev || (int)roundf(prev.core_pcts[i]) != val) {
+                    lv_bar_set_value(bar_cpu_cores[i], val, LV_ANIM_OFF);
+                }
+            }
+        }
     }
 
     // RAM

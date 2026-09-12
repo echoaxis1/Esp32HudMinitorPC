@@ -18,10 +18,20 @@ void processMacMetricsJson(const char *jsonStr) {
         return;
     }
 
-    latestMetrics.cpu_pct       = doc["cpu"].as<float>();
-    latestMetrics.cpu_temp      = doc["cpu_temp"].as<float>();
-    latestMetrics.gpu_temp      = doc["gpu_temp"].as<float>();
-    latestMetrics.ram_pct       = doc["ram_pct"].as<float>();
+    latestMetrics.cpu_pct   = doc["cpu"].is<float>() ? doc["cpu"].as<float>() : 0.0f;
+    latestMetrics.cpu_temp  = doc["cpu_temp"].is<float>() ? doc["cpu_temp"].as<float>() : 0.0f;
+    latestMetrics.gpu_temp  = doc["gpu_temp"].is<float>() ? doc["gpu_temp"].as<float>() : 0.0f;
+
+    // Per-core CPU Parsing
+    latestMetrics.core_count = 0;
+    if (doc["cores"].is<JsonArray>()) {
+        for (JsonVariant c : doc["cores"].as<JsonArray>()) {
+            if (latestMetrics.core_count >= MAX_CPU_CORES) break;
+            latestMetrics.core_pcts[latestMetrics.core_count++] = c.as<float>();
+        }
+    }
+
+    latestMetrics.ram_pct   = doc["ram_pct"].is<float>() ? doc["ram_pct"].as<float>() : 0.0f;
     latestMetrics.ram_used_gb   = doc["ram_used"].as<float>();
     latestMetrics.ram_total_gb  = doc["ram_total"].is<float>() ? doc["ram_total"].as<float>() : 16.0f;
     latestMetrics.disk_pct      = doc["disk_pct"].as<float>();
