@@ -1,0 +1,6 @@
+.output
+dist
+node_modules
+data/*.db*
+.tanstack
+*.log
