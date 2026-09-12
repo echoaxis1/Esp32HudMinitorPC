@@ -464,24 +464,17 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_add_event_cb(card_agy, on_agy_card_click, LV_EVENT_CLICKED, NULL);
     lv_obj_set_style_border_color(card_agy, COLOR_ACCENT_AMBER, LV_STATE_PRESSED);
 
-    lv_obj_t *title_agy = lv_label_create(card_agy);
-    lv_label_set_text(title_agy, "AGY COCKPIT • ACCOUNT USAGE");
-    lv_obj_set_style_text_color(title_agy, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(title_agy, &lv_font_montserrat_12, 0);
-    lv_obj_align(title_agy, LV_ALIGN_TOP_LEFT, 0, 0);
+    lbl_agy_acc = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_acc, "AGY Active : --");
+    lv_obj_set_style_text_color(lbl_agy_acc, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_agy_acc, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_agy_acc, LV_ALIGN_TOP_LEFT, 0, 0);
 
     lbl_agy_pool = lv_label_create(card_agy);
     lv_label_set_text(lbl_agy_pool, "Pool: --");
     lv_obj_set_style_text_color(lbl_agy_pool, COLOR_ACCENT_GREEN, 0);
     lv_obj_set_style_text_font(lbl_agy_pool, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_agy_pool, LV_ALIGN_TOP_RIGHT, 0, 0);
-
-    // Active Account Tag
-    lbl_agy_acc = lv_label_create(card_agy);
-    lv_label_set_text(lbl_agy_acc, "ACTIVE: --");
-    lv_obj_set_style_text_color(lbl_agy_acc, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_agy_acc, &lv_font_montserrat_14, 0);
-    lv_obj_set_pos(lbl_agy_acc, 0, 22);
+    lv_obj_align(lbl_agy_pool, LV_ALIGN_TOP_RIGHT, 0, 2);
 
     // Left Arc: GEMINI (Neon Cyan) - Box: 170 x 120 (pos x=5, y=42)
     arc_agy_gemini = lv_arc_create(card_agy);
@@ -1413,9 +1406,9 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     // AGY COCKPIT USAGE (Bottom Right Card)
     if (lbl_agy_acc && (!hasPrev || strcmp(m.agy_acc, prev.agy_acc) != 0)) {
         if (m.agy_acc[0] != '\0') {
-            snprintf(buf, sizeof(buf), "ACTIVE: %s", m.agy_acc);
+            snprintf(buf, sizeof(buf), "AGY Active : %s", m.agy_acc);
         } else {
-            snprintf(buf, sizeof(buf), "ACTIVE: --");
+            snprintf(buf, sizeof(buf), "AGY Active : --");
         }
         lv_label_set_text(lbl_agy_acc, buf);
     }
