@@ -53,11 +53,12 @@ static lv_obj_t *lbl_net_if = nullptr;
 static lv_obj_t *card_agy = nullptr;
 static lv_obj_t *lbl_agy_acc = nullptr;
 static lv_obj_t *lbl_agy_pool = nullptr;
+static lv_obj_t *arc_agy_claude = nullptr;
 static lv_obj_t *lbl_agy_claude_val = nullptr;
-static lv_obj_t *bar_agy_claude = nullptr;
+static lv_obj_t *lbl_agy_claude_sub = nullptr;
+static lv_obj_t *arc_agy_gemini = nullptr;
 static lv_obj_t *lbl_agy_gemini_val = nullptr;
-static lv_obj_t *bar_agy_gemini = nullptr;
-static lv_obj_t *lbl_agy_sub = nullptr;
+static lv_obj_t *lbl_agy_gemini_sub = nullptr;
 
 // Process Screen Widgets
 static lv_obj_t *lbl_proc_names[MAX_TOP_PROCESSES];
@@ -482,47 +483,71 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_agy_acc, &lv_font_montserrat_14, 0);
     lv_obj_set_pos(lbl_agy_acc, 0, 22);
 
-    // Row Claude
-    lv_obj_t *lbl_c_tag = lv_label_create(card_agy);
-    lv_label_set_text(lbl_c_tag, "CLAUDE");
-    lv_obj_set_style_text_color(lbl_c_tag, COLOR_ACCENT_AMBER, 0);
-    lv_obj_set_style_text_font(lbl_c_tag, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_c_tag, 0, 48);
+    // Left Arc: GEMINI (Neon Cyan) - Box: 170 x 120 (pos x=5, y=42)
+    arc_agy_gemini = lv_arc_create(card_agy);
+    lv_obj_set_size(arc_agy_gemini, 110, 110);
+    lv_arc_set_rotation(arc_agy_gemini, 135);
+    lv_arc_set_bg_angles(arc_agy_gemini, 0, 270);
+    lv_arc_set_range(arc_agy_gemini, 0, 100);
+    lv_arc_set_value(arc_agy_gemini, 100);
+    lv_obj_set_style_arc_color(arc_agy_gemini, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc_agy_gemini, 10, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(arc_agy_gemini, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(arc_agy_gemini, 10, LV_PART_INDICATOR);
+    lv_obj_remove_style(arc_agy_gemini, NULL, LV_PART_KNOB);
+    lv_obj_clear_flag(arc_agy_gemini, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(arc_agy_gemini, 30, 44);
 
-    lbl_agy_claude_val = lv_label_create(card_agy);
-    lv_label_set_text(lbl_agy_claude_val, "5h: --% | Wk: --%");
-    lv_obj_set_style_text_color(lbl_agy_claude_val, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_agy_claude_val, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_agy_claude_val, LV_ALIGN_TOP_RIGHT, 0, 48);
-
-    bar_agy_claude = lv_bar_create(card_agy);
-    lv_obj_set_size(bar_agy_claude, 348, 8);
-    lv_obj_set_pos(bar_agy_claude, 0, 68);
-    lv_bar_set_range(bar_agy_claude, 0, 100);
-    lv_obj_set_style_bg_color(bar_agy_claude, lv_color_hex(0x1E293B), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(bar_agy_claude, COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_agy_claude, 4, 0);
-
-    // Row Gemini
-    lv_obj_t *lbl_g_tag = lv_label_create(card_agy);
-    lv_label_set_text(lbl_g_tag, "GEMINI");
-    lv_obj_set_style_text_color(lbl_g_tag, COLOR_ACCENT_CYAN, 0);
-    lv_obj_set_style_text_font(lbl_g_tag, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_g_tag, 0, 84);
+    lv_obj_t *lbl_g_title = lv_label_create(card_agy);
+    lv_label_set_text(lbl_g_title, "GEMINI");
+    lv_obj_set_style_text_color(lbl_g_title, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_g_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_g_title, 63, 62);
 
     lbl_agy_gemini_val = lv_label_create(card_agy);
-    lv_label_set_text(lbl_agy_gemini_val, "5h: --% | Wk: --%");
+    lv_label_set_text(lbl_agy_gemini_val, "100%");
     lv_obj_set_style_text_color(lbl_agy_gemini_val, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_agy_gemini_val, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_agy_gemini_val, LV_ALIGN_TOP_RIGHT, 0, 84);
+    lv_obj_set_style_text_font(lbl_agy_gemini_val, &lv_font_montserrat_20, 0);
+    lv_obj_set_pos(lbl_agy_gemini_val, 60, 80);
 
-    bar_agy_gemini = lv_bar_create(card_agy);
-    lv_obj_set_size(bar_agy_gemini, 348, 8);
-    lv_obj_set_pos(bar_agy_gemini, 0, 104);
-    lv_bar_set_range(bar_agy_gemini, 0, 100);
-    lv_obj_set_style_bg_color(bar_agy_gemini, lv_color_hex(0x1E293B), LV_PART_MAIN);
-    lv_obj_set_style_bg_color(bar_agy_gemini, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
-    lv_obj_set_style_radius(bar_agy_gemini, 4, 0);
+    lbl_agy_gemini_sub = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_gemini_sub, "Wk: 100%");
+    lv_obj_set_style_text_color(lbl_agy_gemini_sub, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_agy_gemini_sub, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_agy_gemini_sub, 60, 108);
+
+    // Right Arc: CLAUDE (Sun Amber) - Box: 170 x 120 (pos x=200, y=42)
+    arc_agy_claude = lv_arc_create(card_agy);
+    lv_obj_set_size(arc_agy_claude, 110, 110);
+    lv_arc_set_rotation(arc_agy_claude, 135);
+    lv_arc_set_bg_angles(arc_agy_claude, 0, 270);
+    lv_arc_set_range(arc_agy_claude, 0, 100);
+    lv_arc_set_value(arc_agy_claude, 100);
+    lv_obj_set_style_arc_color(arc_agy_claude, lv_color_hex(0x1E293B), LV_PART_MAIN);
+    lv_obj_set_style_arc_width(arc_agy_claude, 10, LV_PART_MAIN);
+    lv_obj_set_style_arc_color(arc_agy_claude, COLOR_ACCENT_AMBER, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(arc_agy_claude, 10, LV_PART_INDICATOR);
+    lv_obj_remove_style(arc_agy_claude, NULL, LV_PART_KNOB);
+    lv_obj_clear_flag(arc_agy_claude, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_pos(arc_agy_claude, 220, 44);
+
+    lv_obj_t *lbl_c_title = lv_label_create(card_agy);
+    lv_label_set_text(lbl_c_title, "CLAUDE");
+    lv_obj_set_style_text_color(lbl_c_title, COLOR_ACCENT_AMBER, 0);
+    lv_obj_set_style_text_font(lbl_c_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_c_title, 251, 62);
+
+    lbl_agy_claude_val = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_claude_val, "100%");
+    lv_obj_set_style_text_color(lbl_agy_claude_val, COLOR_TEXT_MAIN, 0);
+    lv_obj_set_style_text_font(lbl_agy_claude_val, &lv_font_montserrat_20, 0);
+    lv_obj_set_pos(lbl_agy_claude_val, 250, 80);
+
+    lbl_agy_claude_sub = lv_label_create(card_agy);
+    lv_label_set_text(lbl_agy_claude_sub, "Wk: 100%");
+    lv_obj_set_style_text_color(lbl_agy_claude_sub, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_agy_claude_sub, &lv_font_montserrat_12, 0);
+    lv_obj_set_pos(lbl_agy_claude_sub, 250, 108);
 
     // =========================================================================
     // 2. TOP PROCESSES CONTAINER (SCREEN 2)
@@ -1402,19 +1427,30 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
         }
         lv_label_set_text(lbl_agy_pool, buf);
     }
-    if (lbl_agy_claude_val && (!hasPrev || m.agy_c_5h != prev.agy_c_5h || m.agy_c_wk != prev.agy_c_wk)) {
-        snprintf(buf, sizeof(buf), "5h: %d%% | Wk: %d%%", m.agy_c_5h, m.agy_c_wk);
-        lv_label_set_text(lbl_agy_claude_val, buf);
+    // Left Arc: Gemini Update (Arc & 5h value & Wk sub-label)
+    if (arc_agy_gemini && (!hasPrev || m.agy_g_5h != prev.agy_g_5h)) {
+        lv_arc_set_value(arc_agy_gemini, m.agy_g_5h);
     }
-    if (bar_agy_claude && (!hasPrev || m.agy_c_5h != prev.agy_c_5h)) {
-        lv_bar_set_value(bar_agy_claude, m.agy_c_5h, LV_ANIM_OFF);
-    }
-    if (lbl_agy_gemini_val && (!hasPrev || m.agy_g_5h != prev.agy_g_5h || m.agy_g_wk != prev.agy_g_wk)) {
-        snprintf(buf, sizeof(buf), "5h: %d%% | Wk: %d%%", m.agy_g_5h, m.agy_g_wk);
+    if (lbl_agy_gemini_val && (!hasPrev || m.agy_g_5h != prev.agy_g_5h)) {
+        snprintf(buf, sizeof(buf), "%d%%", m.agy_g_5h);
         lv_label_set_text(lbl_agy_gemini_val, buf);
     }
-    if (bar_agy_gemini && (!hasPrev || m.agy_g_5h != prev.agy_g_5h)) {
-        lv_bar_set_value(bar_agy_gemini, m.agy_g_5h, LV_ANIM_OFF);
+    if (lbl_agy_gemini_sub && (!hasPrev || m.agy_g_wk != prev.agy_g_wk)) {
+        snprintf(buf, sizeof(buf), "Wk: %d%%", m.agy_g_wk);
+        lv_label_set_text(lbl_agy_gemini_sub, buf);
+    }
+
+    // Right Arc: Claude Update (Arc & 5h value & Wk sub-label)
+    if (arc_agy_claude && (!hasPrev || m.agy_c_5h != prev.agy_c_5h)) {
+        lv_arc_set_value(arc_agy_claude, m.agy_c_5h);
+    }
+    if (lbl_agy_claude_val && (!hasPrev || m.agy_c_5h != prev.agy_c_5h)) {
+        snprintf(buf, sizeof(buf), "%d%%", m.agy_c_5h);
+        lv_label_set_text(lbl_agy_claude_val, buf);
+    }
+    if (lbl_agy_claude_sub && (!hasPrev || m.agy_c_wk != prev.agy_c_wk)) {
+        snprintf(buf, sizeof(buf), "Wk: %d%%", m.agy_c_wk);
+        lv_label_set_text(lbl_agy_claude_sub, buf);
     }
 
     // Screensaver Standby AGY Token Widgets Update
