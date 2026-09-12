@@ -6,9 +6,7 @@ import { DashboardHeader } from '~/components/dashboard/DashboardHeader'
 import { CpuEqualizerCard } from '~/components/dashboard/CpuEqualizerCard'
 import { MemoryGaugeCard } from '~/components/dashboard/MemoryGaugeCard'
 import { UnifiedStorageCard } from '~/components/dashboard/UnifiedStorageCard'
-import { CpuSummaryCard } from '~/components/dashboard/CpuSummaryCard'
-import { WorkloadTimelineCard } from '~/components/dashboard/WorkloadTimelineCard'
-import { NetworkBandwidthCard } from '~/components/dashboard/NetworkBandwidthCard'
+import { SystemVitalsCard } from '~/components/dashboard/SystemVitalsCard'
 import { AgyQuickPoolCard } from '~/components/dashboard/AgyQuickPoolCard'
 import { DevServersPanel } from '~/components/dashboard/DevServersPanel'
 import { GitStatusCard } from '~/components/dashboard/GitStatusCard'
@@ -68,29 +66,18 @@ function MacMiniStatusDashboard() {
             <UnifiedStorageCard disks={disks} />
           </div>
 
-          {/* Row 2: CPU Stack (Core + Timeline) + Network Bandwidth + Antigravity Cockpit */}
+          {/* Row 2: Unified System Vitals Card (7 cols) + Antigravity Cockpit (5 cols) */}
           <div className="grid grid-cols-12 gap-3 flex-1 min-h-0">
-            {/* Kolom 1 (4 cols): CPU Core Activity di Atas & Workload Timeline di Bawah */}
-            <div className="col-span-4 flex flex-col gap-3 min-h-0">
-              <CpuSummaryCard cpuTotal={telemetry.cpuTotal} cores={cores} />
-              <WorkloadTimelineCard
-                cpuTemp={telemetry.cpuTemp}
-                downKb={network.downKb}
-                upKb={network.upKb}
-              />
-            </div>
+            {/* Unified System Hardware & Network Vitals (CPU Core Load + Network I/O + SoC Temp) */}
+            <SystemVitalsCard
+              cpuTotal={telemetry.cpuTotal}
+              cpuTemp={telemetry.cpuTemp}
+              gpuTemp={telemetry.gpuTemp}
+              cores={cores}
+              network={network}
+            />
 
-            {/* Kolom 2 (3 cols): Network Live Bandwidth Card (Download & Upload) */}
-            <div className="col-span-3 flex flex-col min-h-0">
-              <NetworkBandwidthCard
-                downKb={network.downKb}
-                upKb={network.upKb}
-                ip={network.ip}
-                iface={network.iface}
-              />
-            </div>
-
-            {/* Kolom 3 (5 cols): Antigravity AI Dual Circular Gauge */}
+            {/* Antigravity AI Dual Circular Gauge (5 cols) */}
             <AgyQuickPoolCard
               activeAccount={agy.activeAccount}
               gemini5h={agy.gemini5h}
