@@ -106,7 +106,10 @@ graph TD
 ### Rincian Antarmuka:
 1. **Layar 1 (Dashboard Utama)**:
    - **Header Atas**: Nama Chip SoC (Apple M4), Jam digital, IP Lokal (`en1`), dan Uptime.
-   - **3 Kartu Atas**: CPU Gauge Arc, RAM Usage Arc, dan Dual Storage Bar.
+   - **3 Kartu Atas**:
+     - **Kartu Kiri (CPU Equalizer)**: **10-Core Graphic Equalizer Bar** selebar kartu (Core 1-4 Performance Cores Cyan, Core 5-10 Efficiency Cores Green) dengan label nomor core 1-10 di bawahnya, total beban CPU di pojok kanan atas, serta temperatur CPU di bawahnya.
+     - **Kartu Tengah (RAM)**: RAM Usage Arc, persentase terpakai, dan rasio memori GB.
+     - **Kartu Kanan (Storage)**: Dual Storage Bar (Macintosh HD & Eksternal SSD).
    - **Kartu Bawah Kiri**: Sensor Suhu SoC (CPU & GPU) berdampingan dengan ringkasan bandwidth jaringan (KB/s atau MB/s).
    - **Kartu Bawah Kanan (AGY Active Meter)**: Indikator akun AI aktif dengan 2 Circular Arc Meter (Gemini 5h di kiri, Claude/GPT 5h di kanan, lengkap dengan persentase mingguan di bawahnya).
 2. **Layar 2 (Top Processes)**: Menampilkan 6 proses konsumsi CPU tertinggi beserta PID dan persentase RAM.
