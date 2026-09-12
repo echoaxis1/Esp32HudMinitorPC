@@ -409,68 +409,22 @@ def inject_account_to_keychain(target_account_id):
         return False
 
 def switch_cockpit_account(target_account_id):
-    """Switch active Antigravity account in Cockpit Tools via WebSocket and reload session."""
-    server_json_path = os.path.expanduser('~/.antigravity_cockpit/server.json')
-    if not os.path.exists(server_json_path):
-        print(f"[SWITCH] server.json not found")
-        return False
+    """Switch active Antigravity account in Cockpit Tools & macOS Keychain and reload session."""
     try:
-        with open(server_json_path) as f:
-            cfg = json.load(f)
+        # 1. Update ~/.antigravity_cockpit/accounts.json (current_account_id)
+        acc_path = os.path.expanduser('~/.antigravity_cockpit/accounts.json')
+        if os.path.exists(acc_path):
+            try:
+                with open(acc_path) as f:
+                    acc_cfg = json.load(f)
+                acc_cfg['current_account_id'] = target_account_id
+                with open(acc_path, 'w') as f:
+                    json.dump(acc_cfg, f, indent=2)
+                print(f"[SWITCH] Updated accounts.json current_account_id to {target_account_id}")
+            except Exception as e:
+                print(f"[SWITCH ERROR] Failed to update accounts.json: {e}")
 
-        port = cfg['ws_port']
-        token = cfg['auth_token']
-
-        s = socket.socket()
-        s.settimeout(5.0)
-        s.connect(('127.0.0.1', port))
-
-        handshake = (
-            f"GET /?token={token} HTTP/1.1\r\n"
-            f"Host: 127.0.0.1:{port}\r\n"
-            f"Upgrade: websocket\r\n"
-            f"Connection: Upgrade\r\n"
-            f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-            f"Sec-WebSocket-Version: 13\r\n\r\n"
-        )
-        s.sendall(handshake.encode())
-        s.recv(1024) # handshake response
-        try:
-            s.recv(1024) # initial event.ready
-        except Exception:
-            pass
-
-        # Build masked websocket frame
-        import struct
-        data = json.dumps({
-            'type': 'request.switch_account',
-            'payload': {
-                'request_id': f"hud-sw-{int(time.time())}",
-                'account_id': target_account_id
-            }
-        }).encode()
-
-        length = len(data)
-        frame = bytearray([0x81])
-        mask = b'\x12\x34\x56\x78'
-        if length <= 125:
-            frame.append(0x80 | length)
-        elif length <= 65535:
-            frame.append(0x80 | 126)
-            frame.extend(struct.pack('>H', length))
-        frame.extend(mask)
-        frame.extend(bytearray(b ^ mask[i % 4] for i, b in enumerate(data)))
-
-        s.sendall(bytes(frame))
-        time.sleep(0.5)
-        try:
-            resp = s.recv(2048)
-            print(f"[SWITCH] Cockpit responded: {resp[:120]}")
-        except Exception:
-            pass
-        s.close()
-
-        # 1. Update antigravity_legacy_instances.json (Legacy Antigravity bindAccountId)
+        # 2. Update ~/.antigravity_cockpit/antigravity_legacy_instances.json
         legacy_inst_path = os.path.expanduser('~/.antigravity_cockpit/antigravity_legacy_instances.json')
         if os.path.exists(legacy_inst_path):
             try:
@@ -484,6 +438,66 @@ def switch_cockpit_account(target_account_id):
                 print(f"[SWITCH] Updated legacy instances bindAccountId to {target_account_id}")
             except Exception as e:
                 print(f"[SWITCH ERROR] Failed to update legacy instances: {e}")
+
+        # 3. Notify Cockpit Tools via WebSocket if running (Graceful fallback if not running)
+        server_json_path = os.path.expanduser('~/.antigravity_cockpit/server.json')
+        if os.path.exists(server_json_path):
+            try:
+                with open(server_json_path) as f:
+                    cfg = json.load(f)
+
+                port = cfg.get('ws_port', 19528)
+                token = cfg.get('auth_token', '')
+
+                s = socket.socket()
+                s.settimeout(1.5)
+                s.connect(('127.0.0.1', port))
+
+                handshake = (
+                    f"GET /?token={token} HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{port}\r\n"
+                    f"Upgrade: websocket\r\n"
+                    f"Connection: Upgrade\r\n"
+                    f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                    f"Sec-WebSocket-Version: 13\r\n\r\n"
+                )
+                s.sendall(handshake.encode())
+                s.recv(1024)
+                try:
+                    s.recv(1024)
+                except Exception:
+                    pass
+
+                import struct
+                data = json.dumps({
+                    'type': 'request.switch_account',
+                    'payload': {
+                        'request_id': f"hud-sw-{int(time.time())}",
+                        'account_id': target_account_id
+                    }
+                }).encode()
+
+                length = len(data)
+                frame = bytearray([0x81])
+                mask = b'\x12\x34\x56\x78'
+                if length <= 125:
+                    frame.append(0x80 | length)
+                elif length <= 65535:
+                    frame.append(0x80 | 126)
+                    frame.extend(struct.pack('>H', length))
+                frame.extend(mask)
+                frame.extend(bytearray(b ^ mask[i % 4] for i, b in enumerate(data)))
+
+                s.sendall(bytes(frame))
+                time.sleep(0.3)
+                try:
+                    resp = s.recv(2048)
+                    print(f"[SWITCH] Cockpit responded: {resp[:120]}")
+                except Exception:
+                    pass
+                s.close()
+            except Exception as e:
+                print(f"[SWITCH] Cockpit Tools daemon not reachable ({e}), proceeding with direct Keychain injection.")
 
         # 2. Sync userStatus in state.vscdb
         sync_antigravity_user_status(target_account_id)
