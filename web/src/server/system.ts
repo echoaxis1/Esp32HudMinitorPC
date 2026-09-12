@@ -55,6 +55,7 @@ export interface SystemTelemetry {
     accounts: Array<{
       id: string
       name: string
+      email: string
       isCurrent: boolean
       gemini5h: number
       geminiWeekly: number
@@ -80,7 +81,6 @@ function getCpuCoreUtilization(): CoreUsage[] {
 
   if (!lastCpuTicks || lastCpuTicks.length !== currentCpus.length) {
     lastCpuTicks = currentCpus
-    // Default evenly distributed mock/initial
     return currentCpus.map((_, i) => ({
       id: i + 1,
       pct: Math.floor(Math.random() * 20 + 10),
@@ -112,7 +112,6 @@ function getCpuCoreUtilization(): CoreUsage[] {
 
 /**
  * Exact macOS Activity Monitor Memory Calculation (identik 100% dengan mac_monitor_bridge.py pada HUD)
- * Memory Used = App Memory + Wired Memory + Compressed Memory
  */
 function getMacOsMemory() {
   try {
@@ -130,7 +129,7 @@ function getMacOsMemory() {
     try {
       pageSize = parseInt(execSync('sysctl -n hw.pagesize', { encoding: 'utf-8' }).trim(), 10)
     } catch {
-      // fallback to 16KB for Apple Silicon
+      // fallback
     }
 
     const totalMem = os.totalmem()
@@ -205,64 +204,27 @@ function getNetworkBandwidth() {
   }
 }
 
+/**
+ * Exact Antigravity Cockpit Quota Parser matching mac_monitor_bridge.py
+ */
 function getAgyAccountsInfo() {
   const home = os.homedir()
   const cacheDir = path.join(home, '.antigravity_cockpit', 'cache', 'quota_api_v1_desktop', 'authorized')
   const accountsFile = path.join(home, '.antigravity_cockpit', 'accounts.json')
 
-  let activeAccount = 'Default'
-  let accountsList: Array<{
-    id: string
-    name: string
-    isCurrent: boolean
-    gemini5h: number
-    geminiWeekly: number
-    claude5h: number
-    claudeWeekly: number
-  }> = []
+  let currentId = ''
+  let currentEmail = 'Unknown'
+  const accountsMap: Array<{ id: string; email: string }> = []
 
   try {
     if (fs.existsSync(accountsFile)) {
       const accData = JSON.parse(fs.readFileSync(accountsFile, 'utf-8'))
-      activeAccount = accData.activeAccountId || accData.activeAccount || 'Active'
-    }
-
-    if (fs.existsSync(cacheDir)) {
-      const files = fs.readdirSync(cacheDir)
-      for (const f of files) {
-        if (!f.endsWith('.json')) continue
-        try {
-          const raw = fs.readFileSync(path.join(cacheDir, f), 'utf-8')
-          const q = JSON.parse(raw)
-          const name = q.user_email ? q.user_email.split('@')[0] : f.replace('.json', '').slice(0, 10)
-          
-          let g5h = 100, gWk = 100, c5h = 100, cWk = 100
-
-          if (q.quotas && Array.isArray(q.quotas)) {
-            for (const item of q.quotas) {
-              const model = (item.model_id || '').toLowerCase()
-              const pct = item.remaining_percentage !== undefined ? Math.round(item.remaining_percentage) : 100
-              if (model.includes('gemini') || model.includes('code')) {
-                if (item.window === '5h' || !item.window) g5h = pct
-                else gWk = pct
-              } else if (model.includes('claude') || model.includes('gpt')) {
-                if (item.window === '5h' || !item.window) c5h = pct
-                else cWk = pct
-              }
-            }
-          }
-
-          accountsList.push({
-            id: f.replace('.json', ''),
-            name,
-            isCurrent: name === activeAccount || activeAccount.includes(name),
-            gemini5h: g5h,
-            geminiWeekly: gWk,
-            claude5h: c5h,
-            claudeWeekly: cWk,
-          })
-        } catch {
-          // ignore error per file
+      currentId = accData.current_account_id || ''
+      const rawAccounts = accData.accounts || []
+      for (const a of rawAccounts) {
+        accountsMap.push({ id: a.id, email: a.email })
+        if (a.id === currentId) {
+          currentEmail = a.email || 'Unknown'
         }
       }
     }
@@ -270,24 +232,82 @@ function getAgyAccountsInfo() {
     // fallback
   }
 
-  // Sort descending by gemini5h
-  accountsList.sort((a, b) => b.gemini5h - a.gemini5h)
+  // Parse quota cache files
+  const quotaByEmail: Record<string, { c_5h: number; c_wk: number; g_5h: number; g_wk: number }> = {}
+  let poolReady = 0
 
-  const current = accountsList.find(a => a.isCurrent) || accountsList[0] || {
-    gemini5h: 95,
-    geminiWeekly: 90,
-    claude5h: 88,
-    claudeWeekly: 85,
+  try {
+    if (fs.existsSync(cacheDir)) {
+      const files = fs.readdirSync(cacheDir)
+      for (const f of files) {
+        if (!f.endsWith('.json')) continue
+        try {
+          const raw = fs.readFileSync(path.join(cacheDir, f), 'utf-8')
+          const d = JSON.parse(raw)
+          const email = d.email
+          const summary = d.payload?.quota_summary || {}
+          const groups = summary.groups || []
+
+          let c_5h = 100, c_wk = 100, g_5h = 100, g_wk = 100
+          for (const g of groups) {
+            const isGemini = (g.displayName || '').includes('Gemini')
+            for (const b of g.buckets || []) {
+              const w = b.window
+              const pct = Math.round((b.remainingFraction ?? 1.0) * 100)
+              if (isGemini) {
+                if (w === '5h') g_5h = pct
+                else if (w === 'weekly') g_wk = pct
+              } else {
+                if (w === '5h') c_5h = pct
+                else if (w === 'weekly') c_wk = pct
+              }
+            }
+          }
+
+          if (email) {
+            quotaByEmail[email] = { c_5h, c_wk, g_5h, g_wk }
+            if (c_5h > 0 && g_5h > 0) poolReady++
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  } catch {
+    // fallback
   }
 
+  // Build full account list
+  const accountsList = accountsMap.map(a => {
+    const q = quotaByEmail[a.email] || { c_5h: 100, c_wk: 100, g_5h: 100, g_wk: 100 }
+    const name = a.email.split('@')[0] || a.email
+    return {
+      id: a.id,
+      name,
+      email: a.email,
+      isCurrent: a.id === currentId,
+      gemini5h: q.g_5h,
+      geminiWeekly: q.g_wk,
+      claude5h: q.c_5h,
+      claudeWeekly: q.c_wk,
+    }
+  })
+
+  // Sort descending by Gemini 5h quota
+  accountsList.sort((a, b) => b.gemini5h - a.gemini5h || b.geminiWeekly - a.geminiWeekly)
+
+  // Current active quota
+  const currentQuota = quotaByEmail[currentEmail] || { c_5h: 100, c_wk: 100, g_5h: 100, g_wk: 100 }
+  const shortActiveName = currentEmail.split('@')[0] || 'Active'
+
   return {
-    activeAccount: current ? current.name : activeAccount,
-    gemini5h: current.gemini5h,
-    geminiWeekly: current.geminiWeekly,
-    claude5h: current.claude5h,
-    claudeWeekly: current.claudeWeekly,
-    readyAccounts: accountsList.filter(a => a.gemini5h > 15).length,
-    totalAccounts: accountsList.length,
+    activeAccount: shortActiveName,
+    gemini5h: currentQuota.g_5h,
+    geminiWeekly: currentQuota.g_wk,
+    claude5h: currentQuota.c_5h,
+    claudeWeekly: currentQuota.c_wk,
+    readyAccounts: poolReady,
+    totalAccounts: accountsMap.length,
     accounts: accountsList,
   }
 }
@@ -296,10 +316,7 @@ export const getSystemTelemetry = createServerFn({ method: 'GET' })
   .handler(async (): Promise<SystemTelemetry> => {
     const cores = getCpuCoreUtilization()
     const cpuTotal = Math.round(cores.reduce((acc, c) => acc + c.pct, 0) / cores.length)
-
-    // Gunakan fungsi memori resmi yang identik dengan macOS Activity Monitor & HUD Bridge
     const ram = getMacOsMemory()
-
     const netBandwidth = getNetworkBandwidth()
 
     // Disk usage via df
@@ -344,7 +361,7 @@ export const getSystemTelemetry = createServerFn({ method: 'GET' })
       chip: 'Apple M4',
       uptime: `${Math.floor(os.uptime() / 3600)}h ${Math.floor((os.uptime() % 3600) / 60)}m`,
       cpuTotal,
-      cpuTemp: 56.4, // Standard Apple Silicon thermal baseline
+      cpuTemp: 56.4,
       gpuTemp: 52.1,
       cores,
       ram,
