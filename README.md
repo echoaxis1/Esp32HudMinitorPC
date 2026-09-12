@@ -26,14 +26,20 @@ Proyek ini menampilkan telemetri beban kerja CPU, temperatur inti (CPU/GPU), pen
 
 ```text
 Esp32HudMonitorPC/
+├── AGENTS.md                       # Master orchestrator & context router untuk AI agent & developer
 ├── platformio.ini                  # Konfigurasi board, OPI PSRAM, QIO Flash 80MHz, optimasi -O2
 ├── default_16MB.csv                # Skema partisi Flash 16MB (App 6.25MB, SPIFFS 9.6MB)
 ├── requirements.txt                # Dependensi pustaka Python host (pyserial, psutil, cryptography)
 ├── .gitignore                      # Filter berkas artefak build (.pio, .venv, pycache)
 ├── README.md                       # Dokumentasi utama & catatan pembelajaran teknis
 ├── docs/
+│   ├── architecture/               # Sub-guideline arsitektur modular 3 pilar:
+│   │   ├── WEB_DASHBOARD.md        # Pillar 1: TanStack Start Full-Suite Mac Station Dashboard
+│   │   ├── BRIDGE.md               # Pillar 2: Python Host Daemon, PM2, Google Quota Worker & Serial CDC
+│   │   └── FIRMWARE.md             # Pillar 3: ESP32-S3 ST7262 RGB, SRAM double buffer & LVGL
 │   ├── ESP32S3_RGB_TEARING_POSTMORTEM.md          # Analisis mendalam eliminasi glitch/tearing ST7262
 │   └── ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md # Arsitektur autentikasi & switch akun AGY via HUD
+├── web/                            # Web Workstation Dashboard (TanStack Start, Router, Query, Charts)
 ├── include/
 │   ├── board_config.h              # Definisi pinout ST7262 RGB, I2C CH422G, dan GT911
 │   └── lv_conf.h                   # Konfigurasi engine grafis LVGL & custom font montserrat
