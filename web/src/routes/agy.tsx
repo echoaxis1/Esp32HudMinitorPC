@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getSystemTelemetry, SystemTelemetry } from '~/server/system'
-import { Sparkles, RefreshCw, ArrowUpDown, Filter } from 'lucide-react'
+import { switchAgyAccount } from '~/server/agy'
+import { Sparkles, RefreshCw, ArrowUpDown, Filter, Loader2, CheckCircle2 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 
 export const Route = createFileRoute('/agy')({
@@ -53,10 +54,32 @@ function formatCockpitReset(isoStr?: string) {
 
 function AgyAccountPoolPage() {
   const initialData = Route.useLoaderData() as SystemTelemetry
+  const queryClient = useQueryClient()
+  const [switchingId, setSwitchingId] = useState<string | null>(null)
+  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError: boolean } | null>(null)
 
   // Inisialisasi state filter & sorting dengan persistensi localStorage
   const [sortTarget, setSortTarget] = useState<SortTarget>('gemini_5h')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+
+  const switchMutation = useMutation({
+    mutationFn: async (accountId: string) => {
+      setSwitchingId(accountId)
+      return await switchAgyAccount({ data: accountId })
+    },
+    onSuccess: (res) => {
+      setFeedbackMsg({ text: res.message, isError: false })
+      queryClient.invalidateQueries({ queryKey: ['system-telemetry'] })
+      setTimeout(() => setFeedbackMsg(null), 5000)
+    },
+    onError: (err: any) => {
+      setFeedbackMsg({ text: err?.message || 'Gagal mengganti akun', isError: true })
+      setTimeout(() => setFeedbackMsg(null), 6000)
+    },
+    onSettled: () => {
+      setSwitchingId(null)
+    },
+  })
 
   useEffect(() => {
     try {
@@ -188,6 +211,28 @@ function AgyAccountPoolPage() {
           </button>
         </div>
       </div>
+
+      {/* Feedback Notification Banner */}
+      {feedbackMsg && (
+        <div
+          className={`px-4 py-3 rounded-xl border flex items-center justify-between text-xs font-mono transition-all animate-in fade-in slide-in-from-top duration-300 ${
+            feedbackMsg.isError
+              ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className={`h-4 w-4 ${feedbackMsg.isError ? 'text-rose-400' : 'text-emerald-400'}`} />
+            <span>{feedbackMsg.text}</span>
+          </div>
+          <button
+            onClick={() => setFeedbackMsg(null)}
+            className="text-slate-400 hover:text-white text-xs px-2 py-0.5"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Account Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -336,14 +381,28 @@ function AgyAccountPoolPage() {
             <div className="pt-3 border-t border-[#162030] flex items-center justify-between">
               <span className="text-[10px] text-slate-500 font-mono">One-Click Switch</span>
               <button
-                disabled={acc.isCurrent}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                onClick={() => switchMutation.mutate(acc.id)}
+                disabled={acc.isCurrent || switchMutation.isPending}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 ${
                   acc.isCurrent
-                    ? 'bg-slate-800/40 text-slate-500 cursor-not-allowed'
-                    : 'bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 shadow-md'
+                    ? 'bg-slate-800/40 text-slate-500 cursor-not-allowed border border-transparent'
+                    : switchingId === acc.id
+                    ? 'bg-violet-600/30 text-violet-200 border border-violet-500 cursor-wait shadow-lg'
+                    : switchMutation.isPending
+                    ? 'bg-slate-800/40 text-slate-500 cursor-not-allowed border border-transparent'
+                    : 'bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 shadow-md active:scale-95'
                 }`}
               >
-                {acc.isCurrent ? 'Aktif' : 'Switch Account'}
+                {switchingId === acc.id ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-400" />
+                    <span>Switching...</span>
+                  </>
+                ) : acc.isCurrent ? (
+                  'Aktif'
+                ) : (
+                  'Switch Account'
+                )}
               </button>
             </div>
           </div>

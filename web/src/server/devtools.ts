@@ -58,7 +58,7 @@ export const getDevToolsStatus = createServerFn({ method: 'GET' })
     }
 
     const git: GitRepoStatus = {
-      project: 'Esp32HudMonitorPC',
+      project: 'MacMonitoring',
       branch,
       commitsAhead,
       mergedPRs: 2,

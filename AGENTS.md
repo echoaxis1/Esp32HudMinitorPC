@@ -55,8 +55,15 @@ Setiap agen AI atau pengembang yang bekerja pada workspace ini **WAJIB membaca f
 3. **Pemisahan Stack Bersih (*Clean Stack Isolation*)**:
    - Modifikasi pada aplikasi web (`web/`) tidak boleh merusak format payload serial yang dibutuhkan firmware ESP32 (`firmware/`).
    - Gunakan format serializer terpadu yang kompatibel ke belakang (*backward-compatible*).
-4. **Gaya Komunikasi Profesional**:
+4. **Kewajiban Dokumentasi Temuan Teknis (*Mandatory Discovery Logging*)**:
+   - Setiap kali menemukan perilaku sistem khusus, perbedaan biner aplikasi (seperti perbedaan proses `Antigravity.app` vs `Antigravity IDE.app`), perubahan format token, atau perbaikan bug arsitektural:
+     - **Agen WAJIB mendokumentasikannya ke dokumen arsitektur terkait** (seperti `docs/ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md`) dan mencantumkan catatannya di `AGENTS.md`.
+     - Tujuannya memastikan semua agen dan developer di masa mendatang memahami konteks dan tidak mengulang kesalahan implementasi.
+5. **Gaya Komunikasi Profesional**:
    - Tidak menggunakan emoji dekoratif berlebihan. Sajian data lugas, bersih, dan profesional.
+6. **Kewajiban Dokumentasi JSDoc Bahasa Indonesia**:
+   - Setiap penulisan atau modifikasi fungsi, komponen UI, server function, tipe/interface, utilitas, atau hook pada kode JavaScript/TypeScript **WAJIB menyertakan dokumentasi JSDoc (`/** ... */`) dalam Bahasa Indonesia**.
+   - Dokumentasi JSDoc wajib mendeskripsikan secara jelas: tujuan fungsi/komponen, penjelasan setiap parameter (`@param`), nilai kembalian (`@returns`), serta efek samping/catatan khusus jika ada.
 
 ---
 

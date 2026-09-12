@@ -169,6 +169,25 @@ sequenceDiagram
 - **Sumber Angka Kuota**: Angka kuota (5h/Wk) dibaca dari file cache JSON di `~/.antigravity_cockpit/cache/quota_api_v1_desktop/authorized/*.json`.
 - **Keterbatasan Saat Cockpit Mati**: Pembaruan isi file cache ini ke server Google dilakukan oleh aplikasi Cockpit Tools. Jika aplikasi Cockpit tidak pernah dibuka sama sekali dalam durasi yang panjang, angka kuota yang tampil di HUD akan menampilkan nilai terakhir yang tersimpan di cache lokal. Membuka GUI Cockpit sesekali diperlukan jika ingin menyegarkan snapshot angka kuota terbaru.
 
+### 8. Isolasi Biner & Proses: Antigravity Standalone vs Antigravity IDE
+- **Temuan Kritis Sistem**:
+  Pada sistem macOS pengguna, terdapat dua aplikasi Antigravity yang berbeda:
+  1. `/Applications/Antigravity.app` (**Antigravity Standalone**, bundle ID: `com.google.antigravity`, proses: `Antigravity`).
+  2. `/Applications/Antigravity IDE.app` (**Antigravity IDE** berbasis VS Code/Electron, bundle ID: `com.google.antigravity-ide`, proses: `Electron`).
+- **Masalah Jika Menggunakan `killall Antigravity`**:
+  Perintah bawaan `killall Antigravity` atau `pgrep -x Antigravity` dapat salah sasaran atau hanya memicu sinyal pada salah satu aplikasi (seringkali yang ter-restart hanya *Antigravity IDE* sementara *Antigravity Standalone* beserta Go `language_server` tetap berjalan dengan memegang token sesi lama di memori).
+- **Solusi Baku (Standard Solution)**:
+  - Gunakan inspeksi `psutil` berbasis path eksekusi (`exe` & `cmdline`):
+    - Deteksi `/Applications/Antigravity.app` untuk proses Standalone.
+    - Deteksi `/Applications/Antigravity IDE.app` untuk proses IDE.
+  - Sinkronisasi kedua SQLite state database:
+    - `~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb`
+    - `~/Library/Application Support/Antigravity IDE/User/globalStorage/state.vscdb`
+  - Perbarui token embedded (`antigravityUnifiedStateSync.oauthToken` dan `userStatus`) di kedua database.
+  - **Prinsip Peluncuran Ulang Kondisional (*Conditional Relaunch Only*)**:
+    - Sistem hanya mengeksekusi `open -n -a` untuk aplikasi yang **sebelumnya benar-benar sedang dibuka/aktif (memiliki jendela GUI)**.
+    - Jika salah satu aplikasi sedang ditutup/mati saat pengguna melakukan switch akun, sistem **TIDAK AKAN** meluncurkannya secara tiba-tiba. Token Keychain dan konfigurasi lokal tetap diperbarui di latar belakang, sehingga ketika pengguna kelak membuka aplikasi tersebut, akun yang digunakan sudah otomatis sesuai.
+
 ---
 
 ## 5. Implementasi Kode Referensi
