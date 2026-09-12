@@ -417,6 +417,22 @@ export const verifyTouchIdRegistration = createServerFn({ method: 'POST' })
   })
 
 /**
+ * Server function untuk menghapus kredensial perangkat biometrik dari database.
+ * 
+ * @param input Objek berisi credentialId yang ingin dihapus
+ * @returns Status keberhasilan penghapusan kredensial
+ */
+export const deleteCredential = createServerFn({ method: 'POST' })
+  .validator((input: { credentialId: string }) => {
+    if (!input?.credentialId) throw new Error('Credential ID wajib disertakan.')
+    return input
+  })
+  .handler(async ({ data }) => {
+    db.delete(authCredentials).where(eq(authCredentials.credentialId, data.credentialId)).run()
+    return { success: true }
+  })
+
+/**
  * Server function untuk membuat opsi autentikasi login Touch ID.
  *
  * @returns Opsi JSON autentikasi dan ID challenge

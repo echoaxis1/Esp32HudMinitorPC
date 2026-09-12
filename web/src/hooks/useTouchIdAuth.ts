@@ -15,6 +15,7 @@ import {
   verifyTouchIdAuthentication,
   checkSessionValid,
   serverLogout,
+  deleteCredential,
   type AuthStatus,
 } from '~/server/auth'
 
@@ -50,6 +51,8 @@ export interface UseTouchIdAuthReturn {
   loginWithPin: (pin: string) => Promise<boolean>
   /** Fungsi untuk mendaftarkan Touch ID Mac ke sistem */
   registerTouchId: (deviceName?: string) => Promise<boolean>
+  /** Fungsi untuk menghapus perangkat biometrik terdaftar */
+  removeDevice: (credentialId: string) => Promise<boolean>
   /** Fungsi untuk verifikasi login menggunakan Touch ID */
   authenticateWithTouchId: () => Promise<boolean>
   /** Fungsi serbaguna untuk meminta verifikasi Touch ID sebelum aksi sensitif */
@@ -210,6 +213,7 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
 
       if (res.success) {
         setAuthStatus((prev) => ({ ...prev, hasPasskey: true }))
+        await refreshStatus()
         return true
       }
       return false
@@ -219,7 +223,23 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [refreshStatus])
+
+  // 5b. Hapus Perangkat Terdaftar
+  const removeDevice = useCallback(async (credentialId: string): Promise<boolean> => {
+    try {
+      setIsLoading(true)
+      setErrorMessage(null)
+      await deleteCredential({ data: { credentialId } })
+      await refreshStatus()
+      return true
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Gagal menghapus perangkat.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }, [refreshStatus])
 
   // 6. Login / Autentikasi dengan Touch ID
   const authenticateWithTouchId = useCallback(async (): Promise<boolean> => {
@@ -302,6 +322,7 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
     setupPin,
     loginWithPin,
     registerTouchId,
+    removeDevice,
     authenticateWithTouchId,
     verifyTouchIdForAction,
     logout,
