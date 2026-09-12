@@ -242,65 +242,56 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(title_cpu, &lv_font_montserrat_14, 0);
     lv_obj_align(title_cpu, LV_ALIGN_TOP_LEFT, 0, 0);
 
-    lv_obj_t *lbl_cpu_arch = lv_label_create(card_cpu);
-    lv_label_set_text(lbl_cpu_arch, "4P+6E");
-    lv_obj_set_style_text_color(lbl_cpu_arch, COLOR_ACCENT_AMBER, 0);
-    lv_obj_set_style_text_font(lbl_cpu_arch, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_cpu_arch, LV_ALIGN_TOP_RIGHT, 0, 2);
-
-    arc_cpu = lv_arc_create(card_cpu);
-    lv_obj_set_size(arc_cpu, 115, 115);
-    lv_arc_set_rotation(arc_cpu, 135);
-    lv_arc_set_bg_angles(arc_cpu, 0, 270);
-    lv_arc_set_range(arc_cpu, 0, 100);
-    lv_arc_set_value(arc_cpu, 0);
-    lv_obj_set_style_arc_color(arc_cpu, lv_color_hex(0x1E293B), LV_PART_MAIN);
-    lv_obj_set_style_arc_width(arc_cpu, 10, LV_PART_MAIN);
-    lv_obj_set_style_arc_color(arc_cpu, COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
-    lv_obj_set_style_arc_width(arc_cpu, 10, LV_PART_INDICATOR);
-    lv_obj_remove_style(arc_cpu, NULL, LV_PART_KNOB);
-    lv_obj_clear_flag(arc_cpu, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_pos(arc_cpu, 5, 26);
-
     lbl_cpu_val = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_val, "0.0%");
-    lv_obj_set_style_text_color(lbl_cpu_val, COLOR_TEXT_MAIN, 0);
-    lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_20, 0);
-    lv_obj_set_pos(lbl_cpu_val, 34, 62);
+    lv_obj_set_style_text_color(lbl_cpu_val, COLOR_ACCENT_CYAN, 0);
+    lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_16, 0);
+    lv_obj_align(lbl_cpu_val, LV_ALIGN_TOP_RIGHT, -45, 0);
 
     lbl_cpu_temp = lv_label_create(card_cpu);
-    lv_label_set_text(lbl_cpu_temp, "Core: -- C");
+    lv_label_set_text(lbl_cpu_temp, "-- C");
     lv_obj_set_style_text_color(lbl_cpu_temp, COLOR_ACCENT_CORAL, 0);
     lv_obj_set_style_text_font(lbl_cpu_temp, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_cpu_temp, 34, 88);
+    lv_obj_set_pos(lbl_cpu_temp, 0, 22);
 
-    // 10-CORE GRAPHIC BAR EQUALIZER (At Right Side / Bottom of Card)
-    // 4 P-Cores (Cyan/Amber) + 6 E-Cores (Blue/Slate)
-    // Area: x = 126..220, y = 30..144 (height = 114)
+    lv_obj_t *lbl_cpu_arch = lv_label_create(card_cpu);
+    lv_label_set_text(lbl_cpu_arch, "4P + 6E CORES");
+    lv_obj_set_style_text_color(lbl_cpu_arch, COLOR_TEXT_MUTED, 0);
+    lv_obj_set_style_text_font(lbl_cpu_arch, &lv_font_montserrat_12, 0);
+    lv_obj_align(lbl_cpu_arch, LV_ALIGN_TOP_RIGHT, 0, 22);
+
+    // 10-CORE DEDICATED GRAPHIC BAR EQUALIZER (Full Card Width)
+    // Area: x = 0..219, y = 44..160 (height = 116)
+    // 10 bars: width = 14px, spacing = 8px -> 10 * 14 + 9 * 8 = 140 + 72 = 212px (Centered with margin 4px)
     for (int i = 0; i < MAX_CPU_CORES; i++) {
+        int x_pos = 4 + (i * 21);
+
         bar_cpu_cores[i] = lv_bar_create(card_cpu);
-        lv_obj_set_size(bar_cpu_cores[i], 6, 105);
-        lv_obj_set_pos(bar_cpu_cores[i], 128 + (i * 9), 32);
+        lv_obj_set_size(bar_cpu_cores[i], 14, 110);
+        lv_obj_set_pos(bar_cpu_cores[i], x_pos, 42);
         lv_bar_set_range(bar_cpu_cores[i], 0, 100);
         lv_bar_set_value(bar_cpu_cores[i], 0, LV_ANIM_OFF);
         lv_obj_set_style_bg_color(bar_cpu_cores[i], lv_color_hex(0x1E293B), LV_PART_MAIN);
-        lv_obj_set_style_radius(bar_cpu_cores[i], 2, LV_PART_MAIN);
-        lv_obj_set_style_radius(bar_cpu_cores[i], 2, LV_PART_INDICATOR);
+        lv_obj_set_style_radius(bar_cpu_cores[i], 3, LV_PART_MAIN);
+        lv_obj_set_style_radius(bar_cpu_cores[i], 3, LV_PART_INDICATOR);
 
-        // Core 0-3: Performance Cores (Cyan/Coral), Core 4-9: Efficiency Cores (Green/Blue)
+        // Core 0-3: Performance Cores (Cyan), Core 4-9: Efficiency Cores (Green)
         if (i < 4) {
             lv_obj_set_style_bg_color(bar_cpu_cores[i], COLOR_ACCENT_CYAN, LV_PART_INDICATOR);
         } else {
             lv_obj_set_style_bg_color(bar_cpu_cores[i], COLOR_ACCENT_GREEN, LV_PART_INDICATOR);
         }
-    }
 
-    // Core Label Indicators below the 10 bars
-    lv_obj_t *lbl_cores_tag = lv_label_create(card_cpu);
-    lv_label_set_text(lbl_cores_tag, "P1-P4   |   E1-E6");
-    lv_obj_set_style_text_color(lbl_cores_tag, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(lbl_cores_tag, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_cores_tag, 126, 142);
+        // Core Label Number below each bar (1 to 10)
+        lv_obj_t *lbl_num = lv_label_create(card_cpu);
+        char num_buf[4];
+        snprintf(num_buf, sizeof(num_buf), "%d", i + 1);
+        lv_label_set_text(lbl_num, num_buf);
+        lv_obj_set_style_text_color(lbl_num, i < 4 ? COLOR_ACCENT_CYAN : COLOR_ACCENT_GREEN, 0);
+        lv_obj_set_style_text_font(lbl_num, &lv_font_montserrat_12, 0);
+        // Center text on the 14px bar: if double digit (10) offset by -2
+        lv_obj_set_pos(lbl_num, i == 9 ? x_pos - 1 : x_pos + 3, 156);
+    }
 
     // 1.3 RAM / MEMORY CARD (Top Middle: 245 x 220)
     lv_obj_t *card_ram = create_card(scr_dashboard, 277, 66, 245, 220);
@@ -1303,9 +1294,9 @@ void UIMacMonitor::updateMetrics(const MacSystemMetrics &m) {
     }
     if (lbl_cpu_temp && (!hasPrev || fabsf(m.cpu_temp - prev.cpu_temp) >= 0.1f)) {
         if (m.cpu_temp > 0.0f) {
-            snprintf(buf, sizeof(buf), "Core: %.1f C", m.cpu_temp);
+            snprintf(buf, sizeof(buf), "%.1f C", m.cpu_temp);
         } else {
-            snprintf(buf, sizeof(buf), "Core: -- C");
+            snprintf(buf, sizeof(buf), "-- C");
         }
         lv_label_set_text(lbl_cpu_temp, buf);
     }
