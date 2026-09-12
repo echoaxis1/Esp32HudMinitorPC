@@ -13,6 +13,13 @@ export interface CoreUsage {
   isPcore: boolean
 }
 
+export interface AgyQuotaDetails {
+  pct5h: number
+  pctWeekly: number
+  reset5h?: string
+  resetWeekly?: string
+}
+
 export interface SystemTelemetry {
   timestamp: number
   chip: string
@@ -48,8 +55,12 @@ export interface SystemTelemetry {
     activeAccount: string
     gemini5h: number
     geminiWeekly: number
+    geminiReset5h?: string
+    geminiResetWeekly?: string
     claude5h: number
     claudeWeekly: number
+    claudeReset5h?: string
+    claudeResetWeekly?: string
     readyAccounts: number
     totalAccounts: number
     accounts: Array<{
@@ -59,8 +70,12 @@ export interface SystemTelemetry {
       isCurrent: boolean
       gemini5h: number
       geminiWeekly: number
+      geminiReset5h?: string
+      geminiResetWeekly?: string
       claude5h: number
       claudeWeekly: number
+      claudeReset5h?: string
+      claudeResetWeekly?: string
     }>
   }
 }
@@ -102,7 +117,7 @@ function getCpuCoreUtilization(): CoreUsage[] {
     cores.push({
       id: i + 1,
       pct,
-      isPcore: i < 4, // Apple M4: 4 P-Cores, 6 E-Cores
+      isPcore: i < 4,
     })
   }
 
@@ -206,6 +221,7 @@ function getNetworkBandwidth() {
 
 /**
  * Exact Antigravity Cockpit Quota Parser matching mac_monitor_bridge.py
+ * Meliputi parsing sisa persentase dan waktu reset resmi dari Google Quota API
  */
 function getAgyAccountsInfo() {
   const home = os.homedir()
@@ -233,7 +249,16 @@ function getAgyAccountsInfo() {
   }
 
   // Parse quota cache files
-  const quotaByEmail: Record<string, { c_5h: number; c_wk: number; g_5h: number; g_wk: number }> = {}
+  const quotaByEmail: Record<string, {
+    c_5h: number
+    c_wk: number
+    c_res_5h?: string
+    c_res_wk?: string
+    g_5h: number
+    g_wk: number
+    g_res_5h?: string
+    g_res_wk?: string
+  }> = {}
   let poolReady = 0
 
   try {
@@ -249,23 +274,48 @@ function getAgyAccountsInfo() {
           const groups = summary.groups || []
 
           let c_5h = 100, c_wk = 100, g_5h = 100, g_wk = 100
+          let c_res_5h: string | undefined
+          let c_res_wk: string | undefined
+          let g_res_5h: string | undefined
+          let g_res_wk: string | undefined
+
           for (const g of groups) {
             const isGemini = (g.displayName || '').includes('Gemini')
             for (const b of g.buckets || []) {
               const w = b.window
               const pct = Math.round((b.remainingFraction ?? 1.0) * 100)
+              const reset = b.resetTime
               if (isGemini) {
-                if (w === '5h') g_5h = pct
-                else if (w === 'weekly') g_wk = pct
+                if (w === '5h') {
+                  g_5h = pct
+                  g_res_5h = reset
+                } else if (w === 'weekly') {
+                  g_wk = pct
+                  g_res_wk = reset
+                }
               } else {
-                if (w === '5h') c_5h = pct
-                else if (w === 'weekly') c_wk = pct
+                if (w === '5h') {
+                  c_5h = pct
+                  c_res_5h = reset
+                } else if (w === 'weekly') {
+                  c_wk = pct
+                  c_res_wk = reset
+                }
               }
             }
           }
 
           if (email) {
-            quotaByEmail[email] = { c_5h, c_wk, g_5h, g_wk }
+            quotaByEmail[email] = {
+              c_5h,
+              c_wk,
+              c_res_5h,
+              c_res_wk,
+              g_5h,
+              g_wk,
+              g_res_5h,
+              g_res_wk,
+            }
             if (c_5h > 0 && g_5h > 0) poolReady++
           }
         } catch {
@@ -288,8 +338,12 @@ function getAgyAccountsInfo() {
       isCurrent: a.id === currentId,
       gemini5h: q.g_5h,
       geminiWeekly: q.g_wk,
+      geminiReset5h: q.g_res_5h,
+      geminiResetWeekly: q.g_res_wk,
       claude5h: q.c_5h,
       claudeWeekly: q.c_wk,
+      claudeReset5h: q.c_res_5h,
+      claudeResetWeekly: q.c_res_wk,
     }
   })
 
@@ -304,8 +358,12 @@ function getAgyAccountsInfo() {
     activeAccount: shortActiveName,
     gemini5h: currentQuota.g_5h,
     geminiWeekly: currentQuota.g_wk,
+    geminiReset5h: currentQuota.g_res_5h,
+    geminiResetWeekly: currentQuota.g_res_wk,
     claude5h: currentQuota.c_5h,
     claudeWeekly: currentQuota.c_wk,
+    claudeReset5h: currentQuota.c_res_5h,
+    claudeResetWeekly: currentQuota.c_res_wk,
     readyAccounts: poolReady,
     totalAccounts: accountsMap.length,
     accounts: accountsList,
