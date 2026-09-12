@@ -8,6 +8,7 @@ import { MemoryGaugeCard } from '~/components/dashboard/MemoryGaugeCard'
 import { UnifiedStorageCard } from '~/components/dashboard/UnifiedStorageCard'
 import { CpuSummaryCard } from '~/components/dashboard/CpuSummaryCard'
 import { WorkloadTimelineCard } from '~/components/dashboard/WorkloadTimelineCard'
+import { NetworkBandwidthCard } from '~/components/dashboard/NetworkBandwidthCard'
 import { AgyQuickPoolCard } from '~/components/dashboard/AgyQuickPoolCard'
 import { DevServersPanel } from '~/components/dashboard/DevServersPanel'
 import { GitStatusCard } from '~/components/dashboard/GitStatusCard'
@@ -40,7 +41,7 @@ function MacMiniStatusDashboard() {
   })
 
   const { telemetry, devtools } = data
-  const { cores, ram, disks, agy } = telemetry
+  const { cores, ram, disks, agy, network } = telemetry
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden p-4 space-y-3 bg-[#07090e]">
@@ -51,7 +52,7 @@ function MacMiniStatusDashboard() {
         rpm={1200}
       />
 
-      {/* 2. Main Grid: Left Bento (3 cols) + Right Dev Workspace (1 col) */}
+      {/* 2. Main Grid: Left Bento (9 cols) + Right Dev Workspace (3 cols) */}
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-0 overflow-hidden">
         {/* Left Column Area (9 cols) */}
         <div className="col-span-9 flex flex-col gap-3 min-h-0">
@@ -67,19 +68,29 @@ function MacMiniStatusDashboard() {
             <UnifiedStorageCard disks={disks} />
           </div>
 
-          {/* Row 2: Combined Vertical Stack (CPU Core & Timeline) + Antigravity Cockpit */}
+          {/* Row 2: CPU Stack (Core + Timeline) + Network Bandwidth + Antigravity Cockpit */}
           <div className="grid grid-cols-12 gap-3 flex-1 min-h-0">
-            {/* Kolom Kiri Bawah (7 cols): CPU Core Activity di Atas & Workload Timeline di Bawah */}
-            <div className="col-span-7 flex flex-col gap-3 min-h-0">
+            {/* Kolom 1 (4 cols): CPU Core Activity di Atas & Workload Timeline di Bawah */}
+            <div className="col-span-4 flex flex-col gap-3 min-h-0">
               <CpuSummaryCard cpuTotal={telemetry.cpuTotal} cores={cores} />
               <WorkloadTimelineCard
                 cpuTemp={telemetry.cpuTemp}
-                downKb={telemetry.network.downKb}
-                upKb={telemetry.network.upKb}
+                downKb={network.downKb}
+                upKb={network.upKb}
               />
             </div>
 
-            {/* Kolom Kanan Bawah (5 cols): Antigravity AI Dual Circular Gauge */}
+            {/* Kolom 2 (3 cols): Network Live Bandwidth Card (Download & Upload) */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <NetworkBandwidthCard
+                downKb={network.downKb}
+                upKb={network.upKb}
+                ip={network.ip}
+                iface={network.iface}
+              />
+            </div>
+
+            {/* Kolom 3 (5 cols): Antigravity AI Dual Circular Gauge */}
             <AgyQuickPoolCard
               activeAccount={agy.activeAccount}
               gemini5h={agy.gemini5h}
