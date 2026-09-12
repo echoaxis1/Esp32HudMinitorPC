@@ -242,3 +242,22 @@ def inject_account_to_keychain(target_account_id):
         print(f"[SWITCH ERROR] Failed to inject token: {e}")
         return False
 ```
+
+---
+
+## 5. Standalone Background Quota Refresher (Headless 60s Interval)
+
+Untuk menghilangkan ketergantungan pada aplikasi GUI Cockpit Tools desktop saat memeriksa sisa kuota, daemon `mac_monitor_bridge.py` dilengkapi dengan worker asinkron mandiri:
+
+1. **Frekuensi & Pola Thread**:
+   - Berjalan pada background thread terpisah setiap **60 detik**.
+   - Tidak memblokir loop utama streaming telemetri hardware ke ESP32.
+2. **Auto-Refresh Google OAuth Token**:
+   - Memeriksa batas kedaluwarsa token (`expiry_timestamp`). Jika sisa waktu `< 300 detik` (5 menit), worker otomatis memperbarui `access_token` via endpoint `https://oauth2.googleapis.com/token` menggunakan `refresh_token`.
+   - Token baru dienkripsi kembali menggunakan AES-256-GCM dengan nonce acak 12-byte baru dan disimpan ke envelope `~/.antigravity_cockpit/accounts/<id>.json`.
+3. **Penyegaran Kuota Langsung (Direct Internal API)**:
+   - Mengirim request `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary` dengan header otentikasi Bearer dan payload `{}` kosong.
+   - Hasil kuota (Gemini 5h/weekly & Claude/GPT 5h/weekly) langsung diperbarui ke berkas cache `~/.antigravity_cockpit/cache/quota_api_v1_desktop/authorized/<sha256(email)>.json`.
+4. **Keamanan Kredensial (Secret Protection)**:
+   - Nilai Google OAuth Client ID & Secret diekstrak secara dinamis saat runtime dari binary lokal Cockpit Tools (`/Applications/Cockpit Tools.app/Contents/MacOS/cockpit-tools`), sehingga tidak ada string kredensial sensitif yang tersimpan secara eksplisit di repositori git.
+

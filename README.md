@@ -62,18 +62,22 @@ Esp32HudMonitorPC/
   - Mengalokasikan **dua draw buffer parsial** masing-masing 40 baris langsung di SRAM internal berkecepatan tinggi (`MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA`) untuk menghindari bus contention.
   - Menempatkan fungsi flush [`my_disp_flush`](src/hardware/display.cpp) di dalam **IRAM** menggunakan `IRAM_ATTR`.
 - **[`src/ui/ui_mac_monitor.cpp`](src/ui/ui_mac_monitor.cpp)**: Merancang antarmuka dashboard Cyberpunk:
-  - 1 Top Header (Nama Chip SoC & Uptime sistem).
+  - 1 Top Header (Nama Chip SoC, IP Lokal, dan Jam/Uptime sistem).
   - 3 Kartu Atas (CPU Arc Gauge, RAM Arc Gauge, SSD Capacity Bar).
-  - 2 Kartu Bawah (SOC Thermal Sensors CPU/GPU, Network Download/Upload Traffic).
+  - 2 Kartu Bawah:
+    - Kiri: SOC Thermal Sensors CPU/GPU & Network Download/Upload Traffic.
+    - Kanan: **AGY Active Meter** (Dua circular arc meter untuk kuota 5 Jam & Mingguan model Gemini dan Claude/GPT serta label akun aktif dinamis).
   - Mengimplementasikan logika *differential update* (hanya memperbarui widget yang nilainya berubah) untuk menekan beban render CPU.
+- **[`src/ui/ui_screen_agy_cockpit.cpp`](src/ui/ui_screen_agy_cockpit.cpp)**: Layar sekunder terisolasi (Modular Screen) untuk menampilkan daftar seluruh akun Antigravity Cockpit (terurut descending berdasarkan kuota Gemini terbanyak) dan menangani gesture touch switch akun secara langsung.
 - **[`src/main.cpp`](src/main.cpp)**: Mengontrol siklus FreeRTOS loop:
   - Menerima baris JSON melalui USB Serial CDC buffer.
   - Mengekstrak data metrik ke dalam struct fixed-size char tanpa alokasi heap dinamis (`String`).
   - Mengirim respons konfirmasi `ACK:OK` ke PC.
   - Memanggil `lv_timer_handler()` untuk menyegarkan tampilan.
-- **[`tools/mac_monitor_bridge.py`](tools/mac_monitor_bridge.py)**: Skrip Python multi-threaded yang berjalan di Mac:
+- **[`tools/mac_monitor_bridge.py`](tools/mac_monitor_bridge.py)**: Skrip Python multi-threaded yang berjalan di Mac via PM2 (`esp32hud`):
   - Mengumpulkan beban CPU (`psutil.cpu_percent`), memori fisik, sisa kapasitas storage (`shutil.disk_usage`), dan delta kecepatan bandwidth jaringan.
   - Mengekstrak temperatur CPU/GPU Apple Silicon secara akurat via `powermetrics` / `sysctl`.
+  - **Standalone Quota Refresher**: Background worker asinkron setiap 60 detik yang memeriksa dan memperbarui sisa kuota seluruh akun Antigravity via Google Cloud Code Internal API tanpa perlu membuka desktop GUI Cockpit Tools.
   - Mengirim payload JSON setiap 1.0 detik ke port USB ESP32 (`/dev/cu.usbmodem*`) dan memverifikasi balasan `ACK:OK`.
 
 ---
