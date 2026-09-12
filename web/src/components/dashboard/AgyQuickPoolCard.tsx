@@ -28,7 +28,7 @@ export function AgyQuickPoolCard({
   const claudeOffset = arcLength - (claude5h / 100) * arcLength
 
   return (
-    <div className="col-span-4 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl relative overflow-hidden group">
+    <div className="col-span-5 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl relative overflow-hidden group">
       {/* Top Header matching HUD */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -43,7 +43,7 @@ export function AgyQuickPoolCard({
       </div>
 
       {/* Dual Circular Gauge Arcs (Identik 100% dengan ESP32 HUD) */}
-      <div className="grid grid-cols-2 gap-2 my-auto py-2">
+      <div className="grid grid-cols-2 gap-4 my-auto py-2">
         {/* Left Circle: GEMINI (Neon Cyan) */}
         <div className="flex flex-col items-center justify-center relative">
           <div className="relative w-28 h-28 flex items-center justify-center">

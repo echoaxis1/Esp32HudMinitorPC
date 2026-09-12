@@ -6,6 +6,7 @@ import { DashboardHeader } from '~/components/dashboard/DashboardHeader'
 import { CpuEqualizerCard } from '~/components/dashboard/CpuEqualizerCard'
 import { MemoryGaugeCard } from '~/components/dashboard/MemoryGaugeCard'
 import { UnifiedStorageCard } from '~/components/dashboard/UnifiedStorageCard'
+import { CpuSummaryCard } from '~/components/dashboard/CpuSummaryCard'
 import { WorkloadTimelineCard } from '~/components/dashboard/WorkloadTimelineCard'
 import { AgyQuickPoolCard } from '~/components/dashboard/AgyQuickPoolCard'
 import { DevServersPanel } from '~/components/dashboard/DevServersPanel'
@@ -54,7 +55,7 @@ function MacMiniStatusDashboard() {
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-0 overflow-hidden">
         {/* Left Column Area (9 cols) */}
         <div className="col-span-9 flex flex-col gap-3 min-h-0">
-          {/* Row 1: Executive CPU + Memory Semi Gauge + Unified Storage (Internal & External) */}
+          {/* Row 1: Executive CPU (6 cols) + Memory Gauge (3 cols) + Unified Storage (3 cols) */}
           <div className="grid grid-cols-12 gap-3 h-[270px] shrink-0">
             {/* CPU Equalizer (SRP) */}
             <CpuEqualizerCard cpuTotal={telemetry.cpuTotal} cores={cores} />
@@ -62,50 +63,23 @@ function MacMiniStatusDashboard() {
             {/* Memory Speedometer Arc (SRP) */}
             <MemoryGaugeCard ram={ram} />
 
-            {/* Unified Storage (Internal Macintosh HD + External SSD dalam 1 card) */}
+            {/* Unified Storage (Internal Macintosh HD + External SSD) */}
             <UnifiedStorageCard disks={disks} />
           </div>
 
-          {/* Row 2: Secondary Gauges, Timeline Oscilloscope & AI Cockpit */}
+          {/* Row 2: Combined Vertical Stack (CPU Core & Timeline) + Antigravity Cockpit */}
           <div className="grid grid-cols-12 gap-3 flex-1 min-h-0">
-            {/* CPU Distribution Summary Card */}
-            <div className="col-span-4 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
-              <div>
-                <h2 className="text-sm font-bold text-white tracking-tight">CPU Core Activity</h2>
-                <div className="text-[11px] text-slate-400 font-mono">Real-time Load Distribution</div>
-              </div>
-
-              <div className="flex flex-col items-center justify-center my-auto">
-                <div className="text-3xl font-black font-mono text-cyan-400 tracking-tight">
-                  {telemetry.cpuTotal}%
-                </div>
-                <div className="text-[11px] text-slate-500 font-mono mt-0.5">Average Utilization</div>
-              </div>
-
-              <div className="space-y-1 text-[10px] font-mono border-t border-[#162030] pt-2">
-                <div className="flex justify-between text-slate-400">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-xs bg-cyan-400" /> Performance Cores</span>
-                  <span className="text-cyan-400 font-bold">
-                    {Math.round(cores.slice(0, 4).reduce((acc, c) => acc + c.pct, 0) / 4)}%
-                  </span>
-                </div>
-                <div className="flex justify-between text-slate-400">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-xs bg-emerald-400" /> Efficiency Cores</span>
-                  <span className="text-emerald-400 font-bold">
-                    {Math.round(cores.slice(4).reduce((acc, c) => acc + c.pct, 0) / 6)}%
-                  </span>
-                </div>
-              </div>
+            {/* Kolom Kiri Bawah (7 cols): CPU Core Activity di Atas & Workload Timeline di Bawah */}
+            <div className="col-span-7 flex flex-col gap-3 min-h-0">
+              <CpuSummaryCard cpuTotal={telemetry.cpuTotal} cores={cores} />
+              <WorkloadTimelineCard
+                cpuTemp={telemetry.cpuTemp}
+                downKb={telemetry.network.downKb}
+                upKb={telemetry.network.upKb}
+              />
             </div>
 
-            {/* Timeline Oscilloscope Waveform (SRP) */}
-            <WorkloadTimelineCard
-              cpuTemp={telemetry.cpuTemp}
-              downKb={telemetry.network.downKb}
-              upKb={telemetry.network.upKb}
-            />
-
-            {/* Antigravity AI Quick Cockpit (SRP) */}
+            {/* Kolom Kanan Bawah (5 cols): Antigravity AI Dual Circular Gauge */}
             <AgyQuickPoolCard
               activeAccount={agy.activeAccount}
               gemini5h={agy.gemini5h}
