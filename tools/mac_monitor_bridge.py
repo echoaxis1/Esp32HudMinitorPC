@@ -198,8 +198,164 @@ def find_esp32_port():
             return port.device
     return None
 
+_last_agy_quota_fetch = 0
+_agy_quota_fetching = False
+
+def refresh_all_agy_quotas_background():
+    """Background worker to fetch latest quota for all accounts directly from Google API every 60s."""
+    global _last_agy_quota_fetch, _agy_quota_fetching
+    now = time.time()
+    if _agy_quota_fetching or (now - _last_agy_quota_fetch < 60.0 and _last_agy_quota_fetch != 0):
+        return
+
+    _last_agy_quota_fetch = now
+    _agy_quota_fetching = True
+
+    def _worker():
+        global _agy_quota_fetching
+        try:
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            import base64
+            import urllib.request
+            import urllib.parse
+            import hashlib
+
+            key_path = os.path.expanduser('~/.antigravity_cockpit/secure-account-storage.key')
+            acc_path = os.path.expanduser('~/.antigravity_cockpit/accounts.json')
+            cache_dir = os.path.expanduser('~/.antigravity_cockpit/cache/quota_api_v1_desktop/authorized')
+            os.makedirs(cache_dir, exist_ok=True)
+
+            if not os.path.exists(key_path) or not os.path.exists(acc_path):
+                return
+
+            with open(key_path) as f:
+                key = base64.b64decode(f.read().strip())
+
+            with open(acc_path) as f:
+                acc_data = json.load(f)
+
+            accounts = acc_data.get('accounts', [])
+            google_client_id = None
+            google_client_secret = None
+            cockpit_bin = '/Applications/Cockpit Tools.app/Contents/MacOS/cockpit-tools'
+            if os.path.exists(cockpit_bin):
+                try:
+                    import re
+                    s_out = subprocess.run(['strings', cockpit_bin], capture_output=True, text=True, timeout=4).stdout
+                    m_cid = re.search(r'([0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com)', s_out)
+                    m_sec = re.search(r'(GOCSPX-[A-Za-z0-9_]{28})', s_out)
+                    if m_cid: google_client_id = m_cid.group(1)
+                    if m_sec: google_client_secret = m_sec.group(1)
+                except Exception:
+                    pass
+
+            for a in accounts:
+                acc_id = a.get('id')
+                email = a.get('email')
+                if not acc_id or not email:
+                    continue
+
+                env_path = os.path.expanduser(f'~/.antigravity_cockpit/accounts/{acc_id}.json')
+                if not os.path.exists(env_path):
+                    continue
+
+                try:
+                    with open(env_path) as ef:
+                        envelope = json.load(ef)
+
+                    nonce = base64.b64decode(envelope['nonce'])
+                    ciphertext = base64.b64decode(envelope['ciphertext'])
+                    aesgcm = AESGCM(key)
+                    dec = json.loads(aesgcm.decrypt(nonce, ciphertext, None))
+
+                    tok = dec.get('token', {})
+                    access_token = tok.get('access_token')
+                    expiry = tok.get('expiry_timestamp', 0)
+                    refresh_token = tok.get('refresh_token')
+
+                    # If token expires in less than 300s (5m), refresh it
+                    if time.time() >= (expiry - 300) and refresh_token:
+                        try:
+                            refresh_params = urllib.parse.urlencode({
+                                'client_id': google_client_id,
+                                'client_secret': google_client_secret,
+                                'refresh_token': refresh_token,
+                                'grant_type': 'refresh_token'
+                            }).encode('utf-8')
+                            ref_req = urllib.request.Request('https://oauth2.googleapis.com/token', data=refresh_params)
+                            with urllib.request.urlopen(ref_req, timeout=8) as rresp:
+                                rdata = json.loads(rresp.read().decode())
+                                if 'access_token' in rdata:
+                                    access_token = rdata['access_token']
+                                    tok['access_token'] = access_token
+                                    expires_in = rdata.get('expires_in', 3600)
+                                    tok['expiry_timestamp'] = int(time.time() + expires_in)
+                                    dec['token'] = tok
+
+                                    # Save back updated encrypted token envelope
+                                    new_nonce = os.urandom(12)
+                                    new_cipher = aesgcm.encrypt(new_nonce, json.dumps(dec).encode('utf-8'), None)
+                                    envelope['nonce'] = base64.b64encode(new_nonce).decode('utf-8')
+                                    envelope['ciphertext'] = base64.b64encode(new_cipher).decode('utf-8')
+                                    with open(env_path, 'w') as ef_out:
+                                        json.dump(envelope, ef_out, indent=2)
+                        except Exception as rf_err:
+                            print(f"[AGY QUOTA] Token refresh failed for {email}: {rf_err}")
+
+                    if not access_token:
+                        continue
+
+                    # Query quota from Google Cloud Code internal API
+                    quota_req = urllib.request.Request(
+                        'https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary',
+                        data=b'{}',
+                        headers={
+                            'Authorization': f'Bearer {access_token}',
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'antigravity/2.12.2 darwin/arm64 google-api-nodejs-client/10.3.0',
+                            'x-goog-api-client': 'gl-node/22.21.1'
+                        }
+                    )
+                    with urllib.request.urlopen(quota_req, timeout=8) as qresp:
+                        quota_summary = json.loads(qresp.read().decode())
+
+                    # Save into cache file
+                    cache_file = os.path.join(cache_dir, f'{hashlib.sha256(email.encode()).hexdigest()}.json')
+                    payload = {}
+                    if os.path.exists(cache_file):
+                        try:
+                            with open(cache_file) as cf:
+                                payload = json.load(cf).get('payload', {})
+                        except Exception:
+                            pass
+                    payload['quota_summary'] = quota_summary
+                    cache_data = {
+                        'version': 1,
+                        'source': 'authorized',
+                        'customSource': 'desktop',
+                        'email': email,
+                        'projectId': 'aicode-consumers',
+                        'updatedAt': int(time.time() * 1000),
+                        'payload': payload
+                    }
+                    with open(cache_file, 'w') as cf_out:
+                        json.dump(cache_data, cf_out, indent=2)
+
+                except Exception as acc_ex:
+                    # Skip or log error for this specific account
+                    pass
+        except Exception as e:
+            print(f"[AGY QUOTA REFRESH ERROR] {e}")
+        finally:
+            _agy_quota_fetching = False
+
+    threading.Thread(target=_worker, daemon=True).start()
+
 def get_agy_cockpit_metrics():
     """Extract multi-account usage & current active account from Antigravity Cockpit Tools."""
+    # Trigger background quota check every 60s
+    refresh_all_agy_quotas_background()
+
     acc_path = os.path.expanduser('~/.antigravity_cockpit/accounts.json')
     if not os.path.exists(acc_path):
         return None
