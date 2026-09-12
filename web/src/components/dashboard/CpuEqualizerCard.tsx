@@ -7,7 +7,7 @@ interface CpuEqualizerCardProps {
 
 export function CpuEqualizerCard({ cpuTotal, cores }: CpuEqualizerCardProps) {
   return (
-    <div className="col-span-6 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+    <div className="w-full h-full bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
       <div>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-sm font-bold text-white tracking-tight">Executive CPU Metrics</h2>

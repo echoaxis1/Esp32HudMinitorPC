@@ -6,6 +6,7 @@ import { execSync } from 'node:child_process'
 import { db } from './db'
 import { metricsHistory } from './db/schema'
 import { desc } from 'drizzle-orm'
+import { isServerAuthenticated } from './auth.server'
 
 export interface CoreUsage {
   id: number
@@ -370,8 +371,53 @@ function getAgyAccountsInfo() {
   }
 }
 
+/**
+ * Nilai telemetri default / dummy untuk request yang belum terotentikasi.
+ * Mencegah data rahasia beban Mac, suhu, RAM, dan akun AI bocor ke publik atau HTML SSR awal.
+ */
+export const EMPTY_TELEMETRY: SystemTelemetry = {
+  timestamp: 0,
+  chip: 'Apple M4',
+  uptime: '--',
+  cpuTotal: 0,
+  cpuTemp: 0,
+  gpuTemp: 0,
+  cores: [],
+  ram: {
+    pct: 0,
+    usedGb: 0,
+    totalGb: 16,
+    freeGb: 16,
+    appGb: 0,
+    wiredGb: 0,
+    compGb: 0,
+  },
+  disks: [],
+  network: {
+    ip: '127.0.0.1',
+    iface: 'en0',
+    downKb: 0,
+    upKb: 0,
+  },
+  agy: {
+    activeAccount: 'Locked',
+    gemini5h: 0,
+    geminiWeekly: 0,
+    claude5h: 0,
+    claudeWeekly: 0,
+    readyAccounts: 0,
+    totalAccounts: 0,
+    accounts: [],
+  },
+}
+
 export const getSystemTelemetry = createServerFn({ method: 'GET' })
   .handler(async (): Promise<SystemTelemetry> => {
+    // PROTEKSI SERVER: Jika request belum login, jangan jalankan sensor & jangan kembalikan data rahasia
+    if (!isServerAuthenticated()) {
+      return EMPTY_TELEMETRY
+    }
+
     const cores = getCpuCoreUtilization()
     const cpuTotal = Math.round(cores.reduce((acc, c) => acc + c.pct, 0) / cores.length)
     const ram = getMacOsMemory()

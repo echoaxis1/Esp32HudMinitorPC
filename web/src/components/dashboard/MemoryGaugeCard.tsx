@@ -18,7 +18,7 @@ export function MemoryGaugeCard({ ram }: MemoryGaugeCardProps) {
   const compMemory = ram.compGb !== undefined ? ram.compGb : Number((ram.usedGb * 0.25).toFixed(1))
 
   return (
-    <div className="col-span-3 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+    <div className="w-full h-full bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
       <div>
         <h2 className="text-sm font-bold text-white tracking-tight">Memory Usage</h2>
         <div className="text-[11px] text-slate-400 font-mono">{ram.totalGb}GB Unified Memory</div>

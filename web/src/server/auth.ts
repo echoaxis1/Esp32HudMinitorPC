@@ -13,13 +13,16 @@ import {
   type VerifiedAuthenticationResponse,
 } from '@simplewebauthn/server'
 
-/**
- * Konfigurasi Relaying Party (RP) WebAuthn untuk Mac Workstation.
- */
-const RP_NAME = 'Mac Workstation Mission Control'
-const RP_ID = 'localhost'
-const ORIGIN = process.env.STATION_ORIGIN || 'http://localhost:3456'
-const SESSION_SECRET = process.env.STATION_AUTH_SECRET || 'station_m4_secure_local_key_2026'
+import {
+  isServerAuthenticated,
+  setServerSessionCookie,
+  clearServerSessionCookie,
+  getServerSessionToken,
+  getWebAuthnConfig,
+  AUTH_COOKIE_NAME,
+} from './auth.server'
+
+export const SESSION_SECRET = process.env.STATION_AUTH_SECRET || 'station_m4_secure_local_key_2026'
 
 /**
  * Interface status konfigurasi autentikasi sistem.
@@ -101,6 +104,14 @@ export function verifySessionToken(token?: string): boolean {
   const expiresAt = parseInt(expiresStr, 10)
   return Date.now() < expiresAt
 }
+
+/**
+ * Server function untuk logout dari sisi server (menghapus cookie sesi).
+ */
+export const serverLogout = createServerFn({ method: 'POST' }).handler(async () => {
+  clearServerSessionCookie()
+  return { success: true }
+})
 
 /**
  * Server function untuk mengambil status konfigurasi autentikasi workstation.
@@ -192,6 +203,7 @@ export const setupMasterPin = createServerFn({ method: 'POST' })
       .run()
 
     const sessionToken = createSessionToken(ttlSeconds)
+    setServerSessionCookie(sessionToken, ttlSeconds)
     return {
       success: true,
       message: 'Master PIN berhasil dikonfigurasi.',
@@ -284,6 +296,7 @@ export const verifyMasterPin = createServerFn({ method: 'POST' })
     }
 
     const sessionToken = createSessionToken(config.sessionTtlSeconds)
+    setServerSessionCookie(sessionToken, config.sessionTtlSeconds)
     return {
       success: true,
       message: 'Autentikasi PIN berhasil.',
@@ -306,15 +319,16 @@ export const generateTouchIdRegistrationOptions = createServerFn({ method: 'POST
     }
 
     const existingCreds = db.select().from(authCredentials).all()
+    const { rpName, rpId } = getWebAuthnConfig()
 
     const options = await generateRegistrationOptions({
-      rpName: RP_NAME,
-      rpID: RP_ID,
+      rpName,
+      rpID: rpId,
       userName: 'Mac Administrator',
       userDisplayName: 'Mac mini M4 Admin',
       attestationType: 'none',
       authenticatorSelection: {
-        authenticatorAttachment: 'platform', // Khusus Touch ID / Secure Enclave perangkat ini
+        authenticatorAttachment: 'platform', // Touch ID / Face ID platform
         userVerification: 'required',
         residentKey: 'preferred',
       },
@@ -365,12 +379,13 @@ export const verifyTouchIdRegistration = createServerFn({ method: 'POST' })
     }
 
     let verification: VerifiedRegistrationResponse
+    const { rpId, origin } = getWebAuthnConfig()
     try {
       verification = await verifyRegistrationResponse({
         response: data.response,
         expectedChallenge: challengeRow.challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin: origin,
+        expectedRPID: rpId,
         requireUserVerification: true,
       })
     } catch (err: any) {
@@ -413,8 +428,10 @@ export const generateTouchIdAuthenticationOptions = createServerFn({ method: 'PO
       throw new Error('Belum ada Touch ID yang terdaftar pada workstation ini.')
     }
 
+    const { rpId, origin } = getWebAuthnConfig()
+
     const options = await generateAuthenticationOptions({
-      rpID: RP_ID,
+      rpID: rpId,
       userVerification: 'required',
       allowCredentials: credentials.map((c) => ({
         id: c.credentialId,
@@ -479,12 +496,13 @@ export const verifyTouchIdAuthentication = createServerFn({ method: 'POST' })
     }
 
     let verification: VerifiedAuthenticationResponse
+    const { rpId, origin } = getWebAuthnConfig()
     try {
       verification = await verifyAuthenticationResponse({
         response: data.response,
         expectedChallenge: challengeRow.challenge,
-        expectedOrigin: ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin: origin,
+        expectedRPID: rpId,
         credential: {
           id: credential.credentialId,
           publicKey: Buffer.from(credential.publicKey, 'base64url'),
@@ -513,6 +531,7 @@ export const verifyTouchIdAuthentication = createServerFn({ method: 'POST' })
     const settings = db.select().from(authSettings).all()
     const ttl = settings[0]?.sessionTtlSeconds || 86400 * 7
     const sessionToken = createSessionToken(ttl)
+    setServerSessionCookie(sessionToken, ttl)
 
     return {
       success: true,
@@ -531,5 +550,15 @@ export const verifyTouchIdAuthentication = createServerFn({ method: 'POST' })
 export const checkSessionValid = createServerFn({ method: 'POST' })
   .validator((input: { token?: string }) => input)
   .handler(async ({ data }): Promise<{ isValid: boolean }> => {
-    return { isValid: verifySessionToken(data?.token) }
+    // 1. Cek token dari payload input
+    if (data?.token && verifySessionToken(data.token)) {
+      setServerSessionCookie(data.token)
+      return { isValid: true }
+    }
+    // 2. Cek token dari cookie HTTP
+    const cookieToken = getServerSessionToken()
+    if (verifySessionToken(cookieToken)) {
+      return { isValid: true }
+    }
+    return { isValid: false }
   })

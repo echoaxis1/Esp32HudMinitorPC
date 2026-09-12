@@ -8,9 +8,9 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ uptime, cpuTemp, rpm = 1200 }: DashboardHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-2 shrink-0">
+    <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-2 shrink-0">
       <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-[#111724] border border-[#1d2738] flex items-center justify-center text-white text-xs font-bold shadow-md">
+        <div className="h-9 w-9 rounded-xl bg-[#111724] border border-[#1d2738] flex items-center justify-center text-white text-xs font-bold shadow-md shrink-0">
           M4
         </div>
         <div>
@@ -20,7 +20,7 @@ export function DashboardHeader({ uptime, cpuTemp, rpm = 1200 }: DashboardHeader
               PRO
             </span>
           </div>
-          <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2">
+          <div className="text-[11px] text-slate-400 font-mono flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span>Uptime: {uptime}</span>
             <span className="text-slate-700">•</span>
             <span>Temp: {cpuTemp}°C</span>
@@ -30,13 +30,13 @@ export function DashboardHeader({ uptime, cpuTemp, rpm = 1200 }: DashboardHeader
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative">
+      <div className="flex items-center gap-3 self-end sm:self-auto">
+        <div className="relative hidden sm:block">
           <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-500" />
           <input
             type="text"
             placeholder="Search Projects..."
-            className="bg-[#0e1422] border border-[#1c2637] rounded-xl pl-9 pr-4 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/40 w-56 font-sans"
+            className="bg-[#0e1422] border border-[#1c2637] rounded-xl pl-9 pr-4 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/40 w-44 lg:w-56 font-sans"
           />
         </div>
         <div className="text-xs text-slate-400 font-mono flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0e1422] border border-[#1c2637]">

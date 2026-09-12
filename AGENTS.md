@@ -41,6 +41,7 @@ Setiap agen AI atau pengembang yang bekerja pada workspace ini **WAJIB membaca f
 | **Host Bridge & Telemetri** | Python daemon, PM2 `esp32hud`, sensor SoC M4, WebSocket/Serial | [`docs/architecture/BRIDGE.md`](docs/architecture/BRIDGE.md) |
 | **Firmware ESP32-S3** | PlatformIO, C++, ST7262 RGB Panel, LVGL 8.3, Double Buffer | [`docs/architecture/FIRMWARE.md`](docs/architecture/FIRMWARE.md) |
 | **AI Token & Switch Akun** | Autentikasi Cockpit, Keychain injection, Protobuf `userStatus` | [`docs/ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md`](docs/ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md) |
+| **Autentikasi Biometrik** | WebAuthn/Passkey, Touch ID Mac, Face ID iPhone, Master PIN | [`docs/architecture/BIOMETRIC_AUTH_ARCHITECTURE.md`](docs/architecture/BIOMETRIC_AUTH_ARCHITECTURE.md) |
 | **Stabilitas Display ESP32** | Tearing prevention, DMA starvation, alokasi IRAM/SRAM | [`docs/ESP32S3_RGB_TEARING_POSTMORTEM.md`](docs/ESP32S3_RGB_TEARING_POSTMORTEM.md) |
 
 ---

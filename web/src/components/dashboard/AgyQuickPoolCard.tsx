@@ -147,7 +147,7 @@ function DualConcentricHudGauge({
   const resetWkInfo = formatResetTimeDetail(resetWeekly)
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-between p-3 rounded-xl bg-[#080c14]/90 border border-[#172338] relative group">
+    <div className="w-full sm:flex-1 flex flex-col items-center justify-between p-3 rounded-xl bg-[#080c14]/90 border border-[#172338] relative group min-w-0">
       {/* Label Title Model */}
       <div className="flex items-center gap-1.5 mb-1">
         <span className="text-xs font-black tracking-wider font-mono" style={{ color: outerColor }}>
@@ -286,7 +286,7 @@ export function AgyQuickPoolCard({
 
   return (
     <>
-      <div className="col-span-6 bg-[#0c101a] border border-violet-900/30 rounded-2xl p-4 flex flex-col justify-between shadow-xl relative overflow-hidden group">
+      <div className="w-full h-full bg-[#0c101a] border border-violet-900/30 rounded-2xl p-4 flex flex-col justify-between shadow-xl relative overflow-hidden group">
         {/* Subtle Glow Background */}
         <div className="absolute top-0 right-0 w-44 h-44 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -321,7 +321,7 @@ export function AgyQuickPoolCard({
         </div>
 
       {/* Main Body: Dual Concentric HUD Gauges (GEMINI & CLAUDE) */}
-      <div className="flex items-center justify-center gap-4 my-auto py-2">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 my-auto py-2">
         {/* Gemini Gauge: Lingkaran Luar Cyan (5h), Lingkaran Dalam Indigo/Purple (Weekly) */}
         <DualConcentricHudGauge
           label="GEMINI"

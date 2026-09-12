@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { execSync } from 'node:child_process'
 import fs from 'node:fs'
+import { isServerAuthenticated } from './auth.server'
 
 export interface DevServerItem {
   name: string
@@ -18,8 +19,23 @@ export interface GitRepoStatus {
   commitGraph: number[]
 }
 
+export const EMPTY_DEVTOOLS: { servers: DevServerItem[]; git: GitRepoStatus } = {
+  servers: [],
+  git: {
+    project: 'MacMonitoring',
+    branch: '--',
+    commitsAhead: 0,
+    mergedPRs: 0,
+    commitGraph: [],
+  },
+}
+
 export const getDevToolsStatus = createServerFn({ method: 'GET' })
   .handler(async (): Promise<{ servers: DevServerItem[]; git: GitRepoStatus }> => {
+    // PROTEKSI SERVER: Jika request belum login, jangan bocorkan port dev dan commit history
+    if (!isServerAuthenticated()) {
+      return EMPTY_DEVTOOLS
+    }
     // 1. Check common dev ports
     const servers: DevServerItem[] = [
       {

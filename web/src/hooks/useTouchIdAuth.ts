@@ -14,6 +14,7 @@ import {
   generateTouchIdAuthenticationOptions,
   verifyTouchIdAuthentication,
   checkSessionValid,
+  serverLogout,
   type AuthStatus,
 } from '~/server/auth'
 
@@ -35,6 +36,8 @@ export interface UseTouchIdAuthReturn {
   remainingLockSeconds: number
   /** Jumlah percobaan gagal saat ini */
   failedAttempts: number
+  /** Daftar perangkat biometrik terdaftar */
+  devices: Array<{ id: string; name: string; createdAt: number }>
   /** Status apakah pengguna saat ini terautentikasi (sesi valid) */
   isAuthenticated: boolean
   /** Status sedang proses memverifikasi atau mendaftarkan */
@@ -73,13 +76,24 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
     failedAttempts: 0,
     devices: [],
   })
-  const [isAuthenticated, setIsAuthenticated] = useState(true)
+  // Default false agar UI dashboard tidak bocor/flicker sebelum sesi tervalidasi
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // 1. Cek dukungan hardware & browser
+  // 1. Cek dukungan hardware & browser serta apakah berada pada Secure Context (HTTPS atau localhost)
   useEffect(() => {
     async function checkSupport() {
+      // WebAuthn hanya diizinkan pada Secure Context (HTTPS atau localhost).
+      // Mengakses via HTTP Tailscale (misal http://mac-mini-eko:3456) akan menolak WebAuthn.
+      if (typeof window !== 'undefined') {
+        const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        if (!isSecure) {
+          setIsSupported(false)
+          return
+        }
+      }
+
       const webauthnOk = browserSupportsWebAuthn()
       if (webauthnOk) {
         try {
@@ -110,16 +124,14 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
       }
 
       const token = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
-      if (!token) {
-        setIsAuthenticated(false)
-        return
-      }
 
-      const check = await checkSessionValid({ data: { token } })
+      const check = await checkSessionValid({ data: { token: token || undefined } })
       if (check.isValid) {
         setIsAuthenticated(true)
       } else {
-        localStorage.removeItem(STORAGE_KEY)
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEY)
+        }
         setIsAuthenticated(false)
       }
     } catch (err: any) {
@@ -266,9 +278,14 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
   }, [])
 
   // 8. Logout
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     localStorage.removeItem(STORAGE_KEY)
     setIsAuthenticated(false)
+    try {
+      await serverLogout()
+    } catch {
+      // ignore
+    }
   }, [])
 
   return {
@@ -278,6 +295,7 @@ export function useTouchIdAuth(): UseTouchIdAuthReturn {
     isLocked: !!authStatus.isLocked,
     remainingLockSeconds: authStatus.remainingLockSeconds || 0,
     failedAttempts: authStatus.failedAttempts || 0,
+    devices: authStatus.devices || [],
     isAuthenticated,
     isLoading,
     errorMessage,

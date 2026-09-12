@@ -35,7 +35,7 @@ export function SystemVitalsCard({
   const upFormatted = formatSpeed(network.upKb)
 
   return (
-    <div className="col-span-6 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
+    <div className="w-full h-full bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
       {/* Header Vitals */}
       <div className="flex items-center justify-between border-b border-[#162030] pb-2">
         <div className="flex items-center gap-2">

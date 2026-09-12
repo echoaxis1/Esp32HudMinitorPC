@@ -41,6 +41,7 @@ export function WorkstationLockscreen({ onUnlock, auth }: WorkstationLockscreenP
   const [isProcessing, setIsProcessing] = React.useState(false)
   const [localError, setLocalError] = React.useState<string | null>(null)
   const [touchIdSuccessRegistered, setTouchIdSuccessRegistered] = React.useState(false)
+  const hasAutoTriggeredRef = React.useRef(false)
 
   // Clock interval
   React.useEffect(() => {
@@ -63,12 +64,27 @@ export function WorkstationLockscreen({ onUnlock, auth }: WorkstationLockscreenP
     return () => clearInterval(timer)
   }, [])
 
-  // Auto-trigger Touch ID jika sudah terkonfigurasi dan passkey tersedia
+  // Auto-trigger Touch ID hanya pada Desktop Mac lokal (bukan di iOS/mobile).
+  // Di iOS Safari, WebAuthn menolak pemanggilan tanpa explicit user click ("The document is not focused").
   React.useEffect(() => {
-    if (isConfigured && hasPasskey && !usePinMode) {
-      handleTouchIdLogin()
+    if (typeof window === 'undefined') return
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
+    // Di perangkat iOS/Mobile atau non-localhost, biarkan pengguna menekan tombol secara eksplisit
+    if (isMobile) {
+      return
     }
-  }, [isConfigured, hasPasskey, usePinMode])
+
+    if (isConfigured && hasPasskey && isSupported && !usePinMode && isLocalhost && !hasAutoTriggeredRef.current) {
+      hasAutoTriggeredRef.current = true
+      handleTouchIdLogin()
+    } else if (!isSupported && hasPasskey) {
+      // Jika diakses dari non-secure context, otomatis alihkan ke PIN
+      setUsePinMode(true)
+    }
+  }, [isConfigured, hasPasskey, isSupported, usePinMode])
 
   /**
    * Eksekusi autentikasi via Touch ID.
@@ -78,9 +94,15 @@ export function WorkstationLockscreen({ onUnlock, auth }: WorkstationLockscreenP
     setLocalError(null)
     try {
       const ok = await authenticateWithTouchId()
-      if (ok && onUnlock) onUnlock()
+      if (ok && onUnlock) {
+        onUnlock()
+      } else {
+        // Jika Touch ID gagal atau dibatalkan, jangan looping, biarkan user memilih PIN atau coba lagi manual
+        setUsePinMode(true)
+      }
     } catch (err: any) {
       setLocalError(err.message || 'Verifikasi Touch ID dibatalkan.')
+      setUsePinMode(true)
     } finally {
       setIsProcessing(false)
     }

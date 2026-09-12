@@ -7,11 +7,12 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { LayoutGrid, Bot, Activity, Terminal, Settings, User, HardDrive, Lock, Fingerprint } from 'lucide-react'
+import { LayoutGrid, Bot, Activity, Terminal, Settings, User, HardDrive, Lock, Fingerprint, Smartphone } from 'lucide-react'
 import * as React from 'react'
 import appCss from '~/styles/app.css?url'
 import { useTouchIdAuth } from '~/hooks/useTouchIdAuth'
 import { WorkstationLockscreen } from '~/components/auth/WorkstationLockscreen'
+import { DeviceManagementModal } from '~/components/auth/DeviceManagementModal'
 
 export interface RouterContext {
   queryClient: QueryClient
@@ -50,6 +51,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const queryClient = context?.queryClient ?? defaultQueryClient
   const auth = useTouchIdAuth()
   const { isAuthenticated, isLoading, logout, refreshStatus } = auth
+  const [isDeviceModalOpen, setIsDeviceModalOpen] = React.useState(false)
 
   return (
     <html lang="en">
@@ -58,13 +60,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="bg-[#07090e] text-slate-100 overflow-hidden font-sans antialiased select-none">
         <QueryClientProvider client={queryClient}>
-          {/* Gatekeeper: Jika belum terautentikasi, tampilkan WorkstationLockscreen */}
-          {!isAuthenticated && !isLoading ? (
+          {/* Gatekeeper: Jika status autentikasi sedang dimuat, tampilkan splash loader minimalis */}
+          {isLoading ? (
+            <div className="flex h-screen w-screen items-center justify-center bg-[#05070d] text-cyan-400 font-mono text-sm">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
+                <span className="text-xs text-slate-500 tracking-wider uppercase">Memverifikasi Sesi Workstation...</span>
+              </div>
+            </div>
+          ) : !isAuthenticated ? (
             <WorkstationLockscreen auth={auth} onUnlock={() => refreshStatus()} />
           ) : (
             <div className="flex h-screen w-screen overflow-hidden">
-              {/* Ultra-Slim Icon Sidebar Matching Design Mockup */}
-              <aside className="w-16 border-r border-[#151c28] bg-[#090d15] flex flex-col justify-between items-center py-4 shrink-0 z-20">
+              {/* Ultra-Slim Icon Sidebar: Hidden atau bottom bar pada mobile, vertical aside pada md+ */}
+              <aside className="hidden md:flex w-16 border-r border-[#151c28] bg-[#090d15] flex-col justify-between items-center py-4 shrink-0 z-20">
                 <div className="flex flex-col items-center gap-6 w-full">
                   {/* Traffic Lights (macOS style dots) */}
                   <div className="flex gap-1.5 pt-1">
@@ -90,7 +99,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                       title="AI Cockpit"
                     >
                       <Bot className="h-5 w-5" />
-                      <span className="text-[9px] font-medium tracking-tight mt-0.5">AI Cockpit</span>
+                      <span className="text-[9px] font-medium tracking-tight mt-0.5">AI Pool</span>
                     </Link>
 
                     <Link
@@ -99,8 +108,17 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                       title="Processes"
                     >
                       <Activity className="h-5 w-5" />
-                      <span className="text-[9px] font-medium tracking-tight mt-0.5">Processes</span>
+                      <span className="text-[9px] font-medium tracking-tight mt-0.5">Process</span>
                     </Link>
+
+                    <button
+                      onClick={() => setIsDeviceModalOpen(true)}
+                      className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-400 hover:text-emerald-400 hover:bg-slate-800/40 transition-all"
+                      title="Kelola Biometrik (Face ID / Touch ID)"
+                    >
+                      <Fingerprint className="h-5 w-5" />
+                      <span className="text-[9px] font-medium tracking-tight mt-0.5">Devices</span>
+                    </button>
 
                     <div
                       className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-600 cursor-not-allowed"
@@ -130,9 +148,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                     <Lock className="h-4 w-4" />
                   </button>
 
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-emerald-500 flex items-center justify-center text-xs font-bold text-black ring-2 ring-slate-800" title="Admin">
+                  <button
+                    onClick={() => setIsDeviceModalOpen(true)}
+                    className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-emerald-500 flex items-center justify-center text-xs font-bold text-black ring-2 ring-slate-800 hover:ring-cyan-400 transition-all cursor-pointer"
+                    title="Profil & Biometrik"
+                  >
                     <User className="h-4 w-4" />
-                  </div>
+                  </button>
 
                   <div className="w-9 h-7 rounded-lg bg-[#111723] border border-[#1b2536] flex items-center justify-center text-slate-400" title="Mac mini M4">
                     <HardDrive className="h-4 w-4 text-cyan-400" />
@@ -140,10 +162,58 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 </div>
               </aside>
 
+              {/* Mobile Bottom Navigation Bar */}
+              <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t border-[#151c28] bg-[#090d15]/95 backdrop-blur-md flex items-center justify-around px-2 z-40">
+                <Link
+                  to="/"
+                  className="flex flex-col items-center justify-center text-slate-400 hover:text-white [&.active]:text-cyan-400"
+                >
+                  <LayoutGrid className="h-5 w-5" />
+                  <span className="text-[9px] mt-1 font-medium">Overview</span>
+                </Link>
+                <Link
+                  to="/agy"
+                  className="flex flex-col items-center justify-center text-slate-400 hover:text-white [&.active]:text-violet-400"
+                >
+                  <Bot className="h-5 w-5" />
+                  <span className="text-[9px] mt-1 font-medium">AI Cockpit</span>
+                </Link>
+                <Link
+                  to="/processes"
+                  className="flex flex-col items-center justify-center text-slate-400 hover:text-white [&.active]:text-cyan-400"
+                >
+                  <Activity className="h-5 w-5" />
+                  <span className="text-[9px] mt-1 font-medium">Processes</span>
+                </Link>
+                <button
+                  onClick={() => setIsDeviceModalOpen(true)}
+                  className="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400"
+                  title="Daftarkan Face ID iPhone"
+                >
+                  <Fingerprint className="h-5 w-5 text-emerald-400" />
+                  <span className="text-[9px] mt-1 font-medium text-emerald-400">Face ID</span>
+                </button>
+                <button
+                  onClick={logout}
+                  className="flex flex-col items-center justify-center text-slate-400 hover:text-rose-400"
+                  title="Kunci"
+                >
+                  <Lock className="h-5 w-5" />
+                  <span className="text-[9px] mt-1 font-medium">Lock</span>
+                </button>
+              </nav>
+
               {/* Main Workstation Screen */}
-              <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#07090e]">
+              <main className="flex-1 flex flex-col h-full overflow-y-auto pb-16 md:pb-0 bg-[#07090e] min-w-0">
                 {children}
               </main>
+
+              {/* Modal Pengelolaan Perangkat Biometrik (Face ID iPhone & Mac Touch ID) */}
+              <DeviceManagementModal
+                auth={auth}
+                isOpen={isDeviceModalOpen}
+                onClose={() => setIsDeviceModalOpen(false)}
+              />
             </div>
           )}
         </QueryClientProvider>

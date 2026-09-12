@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { execSync } from 'node:child_process'
+import { isServerAuthenticated } from './auth.server'
 
 export interface ProcessItem {
   pid: number
@@ -12,6 +13,10 @@ export interface ProcessItem {
 
 export const getSystemProcesses = createServerFn({ method: 'GET' })
   .handler(async (): Promise<ProcessItem[]> => {
+    // PROTEKSI SERVER: Jika request belum login, jangan bocorkan daftar proses sistem
+    if (!isServerAuthenticated()) {
+      return []
+    }
     try {
       // Run ps command to get top processes
       const output = execSync('ps -A -o pid,user,%cpu,%mem,comm -r', { encoding: 'utf-8' })
