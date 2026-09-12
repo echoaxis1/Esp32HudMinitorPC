@@ -77,15 +77,20 @@ function MacMiniStatusDashboard() {
               network={network}
             />
 
-            {/* Antigravity AI Monitor (Bar Gemini di Atas, Bar Claude di Bawah) */}
+            {/* Antigravity AI Monitor (Dual Concentric HUD Rings + Reset Timestamps) */}
             <AgyQuickPoolCard
               activeAccount={agy.activeAccount}
               gemini5h={agy.gemini5h}
               geminiWeekly={agy.geminiWeekly}
+              geminiReset5h={agy.geminiReset5h}
+              geminiResetWeekly={agy.geminiResetWeekly}
               claude5h={agy.claude5h}
               claudeWeekly={agy.claudeWeekly}
+              claudeReset5h={agy.claudeReset5h}
+              claudeResetWeekly={agy.claudeResetWeekly}
               readyAccounts={agy.readyAccounts}
               totalAccounts={agy.totalAccounts}
+              accounts={agy.accounts}
             />
           </div>
         </div>

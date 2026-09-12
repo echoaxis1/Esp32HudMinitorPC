@@ -24,8 +24,8 @@ export const getDevToolsStatus = createServerFn({ method: 'GET' })
     const servers: DevServerItem[] = [
       {
         name: 'Vite Start HUD',
-        url: 'http://localhost:3000',
-        port: 3000,
+        url: 'http://localhost:3456',
+        port: 3456,
         status: 'Running',
         color: 'emerald',
       },

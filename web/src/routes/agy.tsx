@@ -4,6 +4,8 @@ import { getSystemTelemetry, SystemTelemetry } from '~/server/system'
 import { switchAgyAccount } from '~/server/agy'
 import { Sparkles, RefreshCw, ArrowUpDown, Filter, Loader2, CheckCircle2 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
+import { useTouchIdAuth } from '~/hooks/useTouchIdAuth'
+import { TouchIdModal } from '~/components/auth/TouchIdModal'
 
 export const Route = createFileRoute('/agy')({
   loader: async () => {
@@ -17,7 +19,6 @@ type SortOrder = 'desc' | 'asc'
 
 const STORAGE_KEY_SORT = 'agy_pool_sort_target'
 const STORAGE_KEY_ORDER = 'agy_pool_sort_order'
-
 /**
  * Helper format persis 100% dengan Cockpit Tools UI:
  * Contoh: "4h 22m (09/12 22:53)" atau "5d 11h 30m (09/18 06:01)"
@@ -52,11 +53,22 @@ function formatCockpitReset(isoStr?: string) {
   }
 }
 
+/**
+ * Komponen halaman manajemen pool akun Antigravity AI Cockpit.
+ * Dilengkapi fitur sorting kuota serta pengamanan biometrik Touch ID
+ * sebelum melakukan rotasi/pergantian akun aktif.
+ *
+ * @returns Tampilan antarmuka AI Cockpit terpadu
+ */
 function AgyAccountPoolPage() {
   const initialData = Route.useLoaderData() as SystemTelemetry
   const queryClient = useQueryClient()
   const [switchingId, setSwitchingId] = useState<string | null>(null)
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError: boolean } | null>(null)
+
+  // Autentikasi biometrik Touch ID reusable
+  const { verifyTouchIdForAction, loginWithPin, isSupported, hasPasskey } = useTouchIdAuth()
+  const [targetAccountToSwitch, setTargetAccountToSwitch] = useState<{ id: string; name: string } | null>(null)
 
   // Inisialisasi state filter & sorting dengan persistensi localStorage
   const [sortTarget, setSortTarget] = useState<SortTarget>('gemini_5h')
@@ -379,9 +391,12 @@ function AgyAccountPoolPage() {
 
             {/* Action Footer */}
             <div className="pt-3 border-t border-[#162030] flex items-center justify-between">
-              <span className="text-[10px] text-slate-500 font-mono">One-Click Switch</span>
+              <span className="text-[10px] text-slate-500 font-mono">Touch ID Protected Switch</span>
               <button
-                onClick={() => switchMutation.mutate(acc.id)}
+                onClick={() => {
+                  // Memicu modal autentikasi Touch ID terlebih dahulu
+                  setTargetAccountToSwitch({ id: acc.id, name: acc.name })
+                }}
                 disabled={acc.isCurrent || switchMutation.isPending}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 ${
                   acc.isCurrent
@@ -408,6 +423,24 @@ function AgyAccountPoolPage() {
           </div>
         ))}
       </div>
+
+      {/* Reusable Touch ID Prompt Modal untuk Aksi Pergantian Akun */}
+      <TouchIdModal
+        isOpen={!!targetAccountToSwitch}
+        actionTitle={`Ganti Akun ke ${targetAccountToSwitch?.name || ''}`}
+        description="Tempelkan jari pada sensor Touch ID Mac Anda untuk mengotorisasi pergantian akun aktif Antigravity."
+        onClose={() => setTargetAccountToSwitch(null)}
+        onSuccess={() => {
+          if (targetAccountToSwitch) {
+            switchMutation.mutate(targetAccountToSwitch.id)
+            setTargetAccountToSwitch(null)
+          }
+        }}
+        onVerifyTouchId={verifyTouchIdForAction}
+        onVerifyPin={loginWithPin}
+        isSupported={isSupported}
+        hasPasskey={hasPasskey}
+      />
     </div>
   )
 }
