@@ -66,9 +66,9 @@ function MacMiniStatusDashboard() {
             <UnifiedStorageCard disks={disks} />
           </div>
 
-          {/* Row 2: Unified System Vitals Card (7 cols) + Antigravity Cockpit (5 cols) */}
+          {/* Row 2: Vitals Berbaris ke Bawah (6 cols) + Antigravity AI Monitor (6 cols) */}
           <div className="grid grid-cols-12 gap-3 flex-1 min-h-0">
-            {/* Unified System Hardware & Network Vitals (CPU Core Load + Network I/O + SoC Temp) */}
+            {/* System Hardware & Network Vitals (CPU Load Atas, Network I/O Bawah) */}
             <SystemVitalsCard
               cpuTotal={telemetry.cpuTotal}
               cpuTemp={telemetry.cpuTemp}
@@ -77,7 +77,7 @@ function MacMiniStatusDashboard() {
               network={network}
             />
 
-            {/* Antigravity AI Dual Circular Gauge (5 cols) */}
+            {/* Antigravity AI Monitor (Bar Gemini di Atas, Bar Claude di Bawah) */}
             <AgyQuickPoolCard
               activeAccount={agy.activeAccount}
               gemini5h={agy.gemini5h}
