@@ -245,12 +245,15 @@ void setup() {
     Serial.setTxBufferSize(4096);
     Serial.begin(115200);
     delay(500);
+    Serial.println("ESP32_BOOT_START");
 
     // 1. Inisialisasi Layar & Touch
     DisplayManager::init();
+    Serial.println("ESP32_DISPLAY_INIT_DONE");
 
     // 2. Buat Tampilan Dashboard Mac Monitor di LVGL
     UIMacMonitor::create(lv_scr_act());
+    Serial.println("ESP32_UI_CREATE_DONE");
 
     // 3. Set Nilai Awal Default
     MacSystemMetrics initMetrics;

@@ -160,6 +160,15 @@ sequenceDiagram
   2. Kuota **Gemini Weekly** (`g_wk` descending).
   3. Kuota **Claude 5-Hour** (`c_5h` descending).
 
+### 6. Operasi Switch Akun Bersifat Mandiri (Headless / Tanpa GUI Cockpit)
+- **Tidak Bergantung pada Cockpit Tools.app**: Switch akun tetap berjalan 100% sukses meskipun aplikasi GUI `Cockpit Tools.app` sedang ditutup.
+- Daemon `mac_monitor_bridge.py` memperbarui `current_account_id` langsung di berkas konfigurasi `~/.antigravity_cockpit/accounts.json` dan menginjeksi token yang didekripsi langsung ke macOS Keychain serta konfigurasi Gemini.
+- Percobaan koneksi WebSocket ke Cockpit daemon bersifat *graceful/optional* (tidak memblokir jalannya proses injeksi jika terjadi error `Connection refused`).
+
+### 7. Perilaku Penyegaran Cache Kuota (Quota Cache Behavior)
+- **Sumber Angka Kuota**: Angka kuota (5h/Wk) dibaca dari file cache JSON di `~/.antigravity_cockpit/cache/quota_api_v1_desktop/authorized/*.json`.
+- **Keterbatasan Saat Cockpit Mati**: Pembaruan isi file cache ini ke server Google dilakukan oleh aplikasi Cockpit Tools. Jika aplikasi Cockpit tidak pernah dibuka sama sekali dalam durasi yang panjang, angka kuota yang tampil di HUD akan menampilkan nilai terakhir yang tersimpan di cache lokal. Membuka GUI Cockpit sesekali diperlukan jika ingin menyegarkan snapshot angka kuota terbaru.
+
 ---
 
 ## 5. Implementasi Kode Referensi
