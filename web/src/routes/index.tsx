@@ -5,8 +5,9 @@ import { getDevToolsStatus } from '~/server/devtools'
 import { DashboardHeader } from '~/components/dashboard/DashboardHeader'
 import { CpuEqualizerCard } from '~/components/dashboard/CpuEqualizerCard'
 import { MemoryGaugeCard } from '~/components/dashboard/MemoryGaugeCard'
-import { StorageBentoCard } from '~/components/dashboard/StorageBentoCard'
+import { UnifiedStorageCard } from '~/components/dashboard/UnifiedStorageCard'
 import { WorkloadTimelineCard } from '~/components/dashboard/WorkloadTimelineCard'
+import { AgyQuickPoolCard } from '~/components/dashboard/AgyQuickPoolCard'
 import { DevServersPanel } from '~/components/dashboard/DevServersPanel'
 import { GitStatusCard } from '~/components/dashboard/GitStatusCard'
 
@@ -38,11 +39,11 @@ function MacMiniStatusDashboard() {
   })
 
   const { telemetry, devtools } = data
-  const { cores, ram, disks } = telemetry
+  const { cores, ram, disks, agy } = telemetry
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden p-4 space-y-3 bg-[#07090e]">
-      {/* 1. Header (SRP: Isolated Header Telemetry & Search) */}
+      {/* 1. Header (SRP) */}
       <DashboardHeader
         uptime={telemetry.uptime}
         cpuTemp={telemetry.cpuTemp}
@@ -53,7 +54,7 @@ function MacMiniStatusDashboard() {
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-0 overflow-hidden">
         {/* Left Column Area (9 cols) */}
         <div className="col-span-9 flex flex-col gap-3 min-h-0">
-          {/* Row 1: Executive CPU + Memory Semi Gauge + Primary Storage */}
+          {/* Row 1: Executive CPU + Memory Semi Gauge + Unified Storage (Internal & External) */}
           <div className="grid grid-cols-12 gap-3 h-[270px] shrink-0">
             {/* CPU Equalizer (SRP) */}
             <CpuEqualizerCard cpuTotal={telemetry.cpuTotal} cores={cores} />
@@ -61,23 +62,11 @@ function MacMiniStatusDashboard() {
             {/* Memory Speedometer Arc (SRP) */}
             <MemoryGaugeCard ram={ram} />
 
-            {/* Primary Storage (SRP) */}
-            <StorageBentoCard
-              title="Storage"
-              subtitle="Macintosh HD"
-              usedGb={disks[0]?.usedGb ?? 128}
-              freeGb={disks[0]?.freeGb ?? 320}
-              pct={disks[0]?.pct ?? 28}
-              color="cyan"
-              breakdown={[
-                { label: 'Developer', size: '54.2GB', color: 'bg-cyan-400' },
-                { label: 'System APFS', size: '38.1GB', color: 'bg-emerald-400' },
-                { label: 'Applications', size: '22.8GB', color: 'bg-amber-400' },
-              ]}
-            />
+            {/* Unified Storage (Internal Macintosh HD + External SSD dalam 1 card) */}
+            <UnifiedStorageCard disks={disks} />
           </div>
 
-          {/* Row 2: Secondary Gauges & Timeline Oscilloscope */}
+          {/* Row 2: Secondary Gauges, Timeline Oscilloscope & AI Cockpit */}
           <div className="grid grid-cols-12 gap-3 flex-1 min-h-0">
             {/* CPU Distribution Summary Card */}
             <div className="col-span-4 bg-[#0c101a] border border-[#172030] rounded-2xl p-4 flex flex-col justify-between shadow-xl">
@@ -116,19 +105,15 @@ function MacMiniStatusDashboard() {
               upKb={telemetry.network.upKb}
             />
 
-            {/* Secondary External Storage (SRP) */}
-            <StorageBentoCard
-              title="Secondary Storage"
-              subtitle={disks[1]?.name ?? 'MAC_EXTERNAL_SSD'}
-              usedGb={disks[1]?.usedGb ?? 128}
-              freeGb={disks[1]?.freeGb ?? 337}
-              pct={disks[1]?.pct ?? 28}
-              color="emerald"
-              breakdown={[
-                { label: 'Workspace Code', size: '13.5GB', color: 'bg-cyan-400' },
-                { label: 'PlatformIO Builds', size: '4.2GB', color: 'bg-emerald-400' },
-                { label: 'Backups', size: '1.8GB', color: 'bg-amber-400' },
-              ]}
+            {/* Antigravity AI Quick Cockpit (SRP) */}
+            <AgyQuickPoolCard
+              activeAccount={agy.activeAccount}
+              gemini5h={agy.gemini5h}
+              geminiWeekly={agy.geminiWeekly}
+              claude5h={agy.claude5h}
+              claudeWeekly={agy.claudeWeekly}
+              readyAccounts={agy.readyAccounts}
+              totalAccounts={agy.totalAccounts}
             />
           </div>
         </div>
