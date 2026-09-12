@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { getSystemTelemetry, SystemTelemetry } from '~/server/system'
-import { Sparkles, CheckCircle2, ShieldCheck, RefreshCw, Clock } from 'lucide-react'
+import { Sparkles, RefreshCw, ArrowUpDown, Filter } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
 
 export const Route = createFileRoute('/agy')({
   loader: async () => {
@@ -9,6 +10,12 @@ export const Route = createFileRoute('/agy')({
   },
   component: AgyAccountPoolPage,
 })
+
+type SortTarget = 'gemini_5h' | 'gemini_weekly' | 'claude_5h' | 'claude_weekly'
+type SortOrder = 'desc' | 'asc'
+
+const STORAGE_KEY_SORT = 'agy_pool_sort_target'
+const STORAGE_KEY_ORDER = 'agy_pool_sort_order'
 
 /**
  * Helper format persis 100% dengan Cockpit Tools UI:
@@ -47,6 +54,34 @@ function formatCockpitReset(isoStr?: string) {
 function AgyAccountPoolPage() {
   const initialData = Route.useLoaderData() as SystemTelemetry
 
+  // Inisialisasi state filter & sorting dengan persistensi localStorage
+  const [sortTarget, setSortTarget] = useState<SortTarget>('gemini_5h')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+
+  useEffect(() => {
+    try {
+      const savedSort = localStorage.getItem(STORAGE_KEY_SORT) as SortTarget | null
+      const savedOrder = localStorage.getItem(STORAGE_KEY_ORDER) as SortOrder | null
+      if (savedSort) setSortTarget(savedSort)
+      if (savedOrder) setSortOrder(savedOrder)
+    } catch {}
+  }, [])
+
+  const handleSortChange = (newTarget: SortTarget) => {
+    setSortTarget(newTarget)
+    try {
+      localStorage.setItem(STORAGE_KEY_SORT, newTarget)
+    } catch {}
+  }
+
+  const handleOrderToggle = () => {
+    const nextOrder: SortOrder = sortOrder === 'desc' ? 'asc' : 'desc'
+    setSortOrder(nextOrder)
+    try {
+      localStorage.setItem(STORAGE_KEY_ORDER, nextOrder)
+    } catch {}
+  }
+
   const { data = initialData, refetch, isFetching } = useQuery<SystemTelemetry>({
     queryKey: ['system-telemetry'],
     queryFn: () => getSystemTelemetry(),
@@ -54,57 +89,133 @@ function AgyAccountPoolPage() {
     initialData,
   })
 
+  // Urutkan akun: Sesi aktif 'Saat Ini' selalu nomor 1 paling utama, lalu diikuti sorting terpilih
+  const sortedAccounts = useMemo(() => {
+    const list = [...data.agy.accounts]
+
+    return list.sort((a, b) => {
+      // 1. Akun aktif 'Saat Ini' mutlak paling atas
+      if (a.isCurrent && !b.isCurrent) return -1
+      if (!a.isCurrent && b.isCurrent) return 1
+
+      // 2. Kriteria sorting dinamis
+      let valA = 0
+      let valB = 0
+
+      switch (sortTarget) {
+        case 'gemini_5h':
+          valA = a.gemini5h
+          valB = b.gemini5h
+          break
+        case 'gemini_weekly':
+          valA = a.geminiWeekly
+          valB = b.geminiWeekly
+          break
+        case 'claude_5h':
+          valA = a.claude5h
+          valB = b.claude5h
+          break
+        case 'claude_weekly':
+          valA = a.claudeWeekly
+          valB = b.claudeWeekly
+          break
+      }
+
+      if (valA !== valB) {
+        return sortOrder === 'desc' ? valB - valA : valA - valB
+      }
+
+      // Tie-breaker default: kuota 5h tertinggi
+      return b.gemini5h - a.gemini5h
+    })
+  }, [data.agy.accounts, sortTarget, sortOrder])
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto p-6 space-y-6 bg-[#07090e]">
-      {/* Header */}
-      <div className="flex items-center justify-between bg-[#0c101a] border border-[#172030] px-6 py-4 rounded-2xl shadow-xl">
+      {/* Header Bar dengan Filter & Sorting */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#0c101a] border border-[#172030] px-6 py-4 rounded-2xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/30 text-violet-400">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-white">Antigravity AI Account Pool</h1>
+            <h1 className="text-base font-bold text-white flex items-center gap-2">
+              Antigravity AI Account Pool
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono">
+                {data.agy.totalAccounts} Akun
+              </span>
+            </h1>
             <p className="text-xs text-slate-400 font-mono">
-              Live Google Cloud Code Quota Engine & Accurate Reset Timers
+              Akun aktif selalu diprioritaskan di paling utama • Filter tersimpan otomatis di browser
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Dynamic Filter Controls */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#080c14] border border-[#182232] text-xs font-mono text-slate-300">
+            <Filter className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="text-slate-500">Urutkan:</span>
+            <select
+              value={sortTarget}
+              onChange={(e) => handleSortChange(e.target.value as SortTarget)}
+              className="bg-transparent text-cyan-400 font-bold focus:outline-none cursor-pointer"
+            >
+              <option value="gemini_5h" className="bg-[#0c101a] text-slate-200">Gemini (Limit 5 Jam)</option>
+              <option value="gemini_weekly" className="bg-[#0c101a] text-slate-200">Gemini (Limit Mingguan)</option>
+              <option value="claude_5h" className="bg-[#0c101a] text-slate-200">Claude (Limit 5 Jam)</option>
+              <option value="claude_weekly" className="bg-[#0c101a] text-slate-200">Claude (Limit Mingguan)</option>
+            </select>
+          </div>
+
+          <button
+            onClick={handleOrderToggle}
+            className="px-3 py-1.5 rounded-xl bg-[#080c14] hover:bg-slate-800/80 border border-[#182232] text-xs font-mono text-slate-300 transition-colors flex items-center gap-1.5"
+            title="Ubah Arah Pengurutan"
+          >
+            <ArrowUpDown className="h-3.5 w-3.5 text-emerald-400" />
+            <span>{sortOrder === 'desc' ? 'Terbanyak ↓' : 'Tersedikit ↑'}</span>
+          </button>
+
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition-colors flex items-center gap-2 text-xs font-mono"
+            className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-300 transition-colors flex items-center gap-1.5 text-xs font-mono"
+            title="Perbarui Quota Sekarang"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin text-violet-400' : ''}`} />
-            Refresh Quotas
+            <span>Refresh</span>
           </button>
         </div>
       </div>
 
-      {/* Account Grid Matching Cockpit Design */}
+      {/* Account Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {data.agy.accounts.map((acc) => (
+        {sortedAccounts.map((acc, index) => (
           <div
             key={acc.id}
             className={`p-5 rounded-2xl border transition-all ${
               acc.isCurrent
-                ? 'bg-[#0c1222] border-cyan-500/60 shadow-xl shadow-cyan-500/10 ring-1 ring-cyan-500/40'
+                ? 'bg-[#0c1426] border-cyan-500/70 shadow-2xl shadow-cyan-500/15 ring-2 ring-cyan-500/40 relative'
                 : 'bg-[#0c101a] border-[#172030] hover:border-slate-700 shadow-lg'
             } flex flex-col justify-between space-y-4`}
           >
-            {/* Card Header: Email, Saat Ini badge, & PRO badge */}
+            {/* Card Header: Checkbox icon, Email, Saat Ini badge, & PRO badge */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="h-4 w-4 rounded-md border border-slate-600 bg-slate-900" />
-                <span className="text-sm font-bold text-slate-100 font-mono tracking-tight truncate max-w-[190px]">
+                <div className={`h-4 w-4 rounded-md border flex items-center justify-center text-[9px] font-mono font-bold ${
+                  acc.isCurrent ? 'bg-cyan-500 text-black border-cyan-400' : 'bg-slate-900 border-slate-700 text-slate-500'
+                }`}>
+                  {index + 1}
+                </div>
+                <span className="text-sm font-bold text-slate-100 font-mono tracking-tight truncate max-w-[180px]">
                   {acc.email}
                 </span>
               </div>
 
               <div className="flex items-center gap-1.5">
                 {acc.isCurrent && (
-                  <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500 text-black">
+                  <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-400 text-black shadow-sm shadow-emerald-400/30">
                     Saat Ini
                   </span>
                 )}
@@ -118,17 +229,26 @@ function AgyAccountPoolPage() {
             <div className="grid grid-cols-2 gap-4 pt-1 font-mono">
               {/* Kolom Kiri: Claude & GPT */}
               <div className="space-y-3">
-                <div className="text-xs font-bold text-slate-200">Claude</div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                  <span>Claude</span>
+                  {(sortTarget === 'claude_5h' || sortTarget === 'claude_weekly') && (
+                    <span className="text-[9px] text-amber-400 uppercase font-semibold">Sorted</span>
+                  )}
+                </div>
 
                 {/* Claude 5h */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400">5h</span>
-                    <span className="text-emerald-400 font-bold">{acc.claude5h}%</span>
+                    <span className={`font-bold ${sortTarget === 'claude_5h' ? 'text-amber-400 text-sm' : 'text-emerald-400'}`}>
+                      {acc.claude5h}%
+                    </span>
                   </div>
                   <div className="h-1.5 w-full bg-[#162032] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        sortTarget === 'claude_5h' ? 'bg-amber-400' : 'bg-emerald-400'
+                      }`}
                       style={{ width: `${acc.claude5h}%` }}
                     />
                   </div>
@@ -141,11 +261,15 @@ function AgyAccountPoolPage() {
                 <div className="space-y-1 pt-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400">Weekly</span>
-                    <span className="text-emerald-400 font-bold">{acc.claudeWeekly}%</span>
+                    <span className={`font-bold ${sortTarget === 'claude_weekly' ? 'text-amber-400 text-sm' : 'text-emerald-400'}`}>
+                      {acc.claudeWeekly}%
+                    </span>
                   </div>
                   <div className="h-1.5 w-full bg-[#162032] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        sortTarget === 'claude_weekly' ? 'bg-amber-400' : 'bg-emerald-400'
+                      }`}
                       style={{ width: `${acc.claudeWeekly}%` }}
                     />
                   </div>
@@ -157,17 +281,26 @@ function AgyAccountPoolPage() {
 
               {/* Kolom Kanan: Gemini */}
               <div className="space-y-3">
-                <div className="text-xs font-bold text-slate-200">Gemini</div>
+                <div className="flex items-center justify-between text-xs font-bold text-slate-200">
+                  <span>Gemini</span>
+                  {(sortTarget === 'gemini_5h' || sortTarget === 'gemini_weekly') && (
+                    <span className="text-[9px] text-cyan-400 uppercase font-semibold">Sorted</span>
+                  )}
+                </div>
 
                 {/* Gemini 5h */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400">5h</span>
-                    <span className="text-emerald-400 font-bold">{acc.gemini5h}%</span>
+                    <span className={`font-bold ${sortTarget === 'gemini_5h' ? 'text-cyan-400 text-sm' : 'text-emerald-400'}`}>
+                      {acc.gemini5h}%
+                    </span>
                   </div>
                   <div className="h-1.5 w-full bg-[#162032] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        sortTarget === 'gemini_5h' ? 'bg-cyan-400' : 'bg-emerald-400'
+                      }`}
                       style={{ width: `${acc.gemini5h}%` }}
                     />
                   </div>
@@ -180,11 +313,15 @@ function AgyAccountPoolPage() {
                 <div className="space-y-1 pt-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-400">Weekly</span>
-                    <span className="text-emerald-400 font-bold">{acc.geminiWeekly}%</span>
+                    <span className={`font-bold ${sortTarget === 'gemini_weekly' ? 'text-cyan-400 text-sm' : 'text-emerald-400'}`}>
+                      {acc.geminiWeekly}%
+                    </span>
                   </div>
                   <div className="h-1.5 w-full bg-[#162032] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        sortTarget === 'gemini_weekly' ? 'bg-cyan-400' : 'bg-emerald-400'
+                      }`}
                       style={{ width: `${acc.geminiWeekly}%` }}
                     />
                   </div>
@@ -202,7 +339,7 @@ function AgyAccountPoolPage() {
                 disabled={acc.isCurrent}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
                   acc.isCurrent
-                    ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed'
+                    ? 'bg-slate-800/40 text-slate-500 cursor-not-allowed'
                     : 'bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 border border-violet-500/30 shadow-md'
                 }`}
               >
