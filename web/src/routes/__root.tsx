@@ -7,7 +7,7 @@ import {
   Scripts,
 } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Activity, Cpu, Terminal, Sparkles, Layers } from 'lucide-react'
+import { LayoutGrid, Bot, Activity, Terminal, Settings, User, HardDrive } from 'lucide-react'
 import * as React from 'react'
 import appCss from '~/styles/app.css?url'
 
@@ -29,7 +29,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Mac Workstation Mission Control' },
+      { title: 'Mac mini M4 Status - Workstation Dashboard' },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
@@ -45,84 +45,79 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="bg-[#080c14] text-slate-100 overflow-hidden font-sans antialiased">
+      <body className="bg-[#07090e] text-slate-100 overflow-hidden font-sans antialiased select-none">
         <QueryClientProvider client={queryClient}>
           <div className="flex h-screen w-screen overflow-hidden">
-            {/* Sidebar Nav */}
-            <aside className="w-64 border-r border-slate-800/80 bg-[#0b101b]/90 backdrop-blur-md flex flex-col justify-between p-4 shrink-0">
-              <div>
-                <div className="flex items-center gap-3 px-3 py-4 border-b border-slate-800/60 mb-6">
-                  <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-400 flex items-center justify-center text-black font-black text-lg shadow-lg shadow-cyan-500/20">
-                    M4
-                  </div>
-                  <div>
-                    <div className="font-bold tracking-tight text-white flex items-center gap-2">
-                      MISSION CONTROL
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 font-mono border border-cyan-500/30">
-                        HUD
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 font-mono">Apple Silicon Workstation</div>
-                  </div>
+            {/* Ultra-Slim Icon Sidebar Matching Design Mockup */}
+            <aside className="w-16 border-r border-[#151c28] bg-[#090d15] flex flex-col justify-between items-center py-4 shrink-0 z-20">
+              <div className="flex flex-col items-center gap-6 w-full">
+                {/* Traffic Lights (macOS style dots) */}
+                <div className="flex gap-1.5 pt-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
                 </div>
 
-                <nav className="space-y-1 font-medium text-sm">
+                {/* Navigation Items */}
+                <nav className="flex flex-col items-center gap-4 w-full px-2 pt-2">
                   <Link
                     to="/"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors [&.active]:bg-cyan-500/10 [&.active]:text-cyan-400 [&.active]:border [&.active]:border-cyan-500/30"
+                    className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/40 transition-all [&.active]:bg-cyan-500/15 [&.active]:text-cyan-400 [&.active]:border [&.active]:border-cyan-500/30"
+                    title="Overview"
                   >
-                    <Cpu className="h-4 w-4" />
-                    <span>Overview & Telemetry</span>
-                  </Link>
-
-                  <Link
-                    to="/processes"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors [&.active]:bg-cyan-500/10 [&.active]:text-cyan-400 [&.active]:border [&.active]:border-cyan-500/30"
-                  >
-                    <Activity className="h-4 w-4" />
-                    <span>Activity Monitor</span>
+                    <LayoutGrid className="h-5 w-5" />
+                    <span className="text-[9px] font-medium tracking-tight mt-0.5">Overview</span>
                   </Link>
 
                   <Link
                     to="/agy"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-colors [&.active]:bg-violet-500/10 [&.active]:text-violet-400 [&.active]:border [&.active]:border-violet-500/30"
+                    className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/40 transition-all [&.active]:bg-violet-500/15 [&.active]:text-violet-400 [&.active]:border [&.active]:border-violet-500/30"
+                    title="AI Cockpit"
                   >
-                    <Sparkles className="h-4 w-4" />
-                    <span>Antigravity AI Pool</span>
+                    <Bot className="h-5 w-5" />
+                    <span className="text-[9px] font-medium tracking-tight mt-0.5">AI Cockpit</span>
                   </Link>
 
-                  <div className="pt-4 pb-2 px-3 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
-                    Developer Tools
+                  <Link
+                    to="/processes"
+                    className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/40 transition-all [&.active]:bg-cyan-500/15 [&.active]:text-cyan-400 [&.active]:border [&.active]:border-cyan-500/30"
+                    title="Processes"
+                  >
+                    <Activity className="h-5 w-5" />
+                    <span className="text-[9px] font-medium tracking-tight mt-0.5">Processes</span>
+                  </Link>
+
+                  <div
+                    className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-600 cursor-not-allowed"
+                    title="DevTools"
+                  >
+                    <Terminal className="h-5 w-5" />
+                    <span className="text-[9px] font-medium tracking-tight mt-0.5">DevTools</span>
                   </div>
 
-                  <div className="flex items-center gap-3 px-3 py-2 text-slate-500 cursor-not-allowed text-xs">
-                    <Terminal className="h-4 w-4" />
-                    <span>Port Inspector (Soon)</span>
-                  </div>
-
-                  <div className="flex items-center gap-3 px-3 py-2 text-slate-500 cursor-not-allowed text-xs">
-                    <Layers className="h-4 w-4" />
-                    <span>PM2 & Docker Services</span>
+                  <div
+                    className="flex flex-col items-center justify-center w-12 h-12 rounded-xl text-slate-600 cursor-not-allowed"
+                    title="Settings"
+                  >
+                    <Settings className="h-5 w-5" />
+                    <span className="text-[9px] font-medium tracking-tight mt-0.5">Settings</span>
                   </div>
                 </nav>
               </div>
 
-              <div className="border-t border-slate-800/60 pt-4 px-3">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                  <span>Bridge Daemon</span>
-                  <span className="flex items-center gap-1.5 text-emerald-400 font-mono">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    Online
-                  </span>
+              {/* Bottom Profile / Device Avatar */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-600 to-emerald-500 flex items-center justify-center text-xs font-bold text-black ring-2 ring-slate-800">
+                  <User className="h-4 w-4" />
                 </div>
-                <div className="text-[11px] text-slate-500 font-mono">
-                  PM2 ID: esp32hud (1.0s sync)
+                <div className="w-9 h-7 rounded-lg bg-[#111723] border border-[#1b2536] flex items-center justify-center text-slate-400" title="Mac mini M4">
+                  <HardDrive className="h-4 w-4 text-cyan-400" />
                 </div>
               </div>
             </aside>
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden">
+            {/* Main Workstation Screen */}
+            <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#07090e]">
               {children}
             </main>
           </div>
