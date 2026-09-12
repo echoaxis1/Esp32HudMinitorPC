@@ -1,8 +1,8 @@
-# ESP32-S3 Mac System Monitor (PC Hardware HUD)
+# ESP32-S3 Mac System Monitor (PC Hardware & AI Assistant HUD)
 
 Sistem hardware monitoring desktop real-time mandiri (*Desk HUD Monitor*) untuk macOS berbasis board pengembang **Waveshare ESP32-S3-Touch-LCD-4.3"** (layar 800×480 RGB Parallel TFT, driver ST7262, 8MB Octal PSRAM, dan 16MB Flash).
 
-Proyek ini menampilkan telemetri beban kerja CPU, temperatur inti (CPU/GPU), penggunaan RAM, sisa kapasitas SSD, serta kecepatan transfer unduh/unggah jaringan secara langsung dan presisi melalui koneksi USB Serial CDC berkecepatan tinggi dengan antarmuka grafis modern bergaya *Dark Cyberpunk*.
+Proyek ini menampilkan telemetri beban kerja CPU, temperatur inti (CPU/GPU), penggunaan RAM, kapasitas storage dual-drive, lalu lintas bandwidth jaringan, widget cuaca dinamis, reminder harian, hingga indikator **Antigravity AI Assistant Cockpit** dengan antarmuka grafis modern bergaya *Dark Cyberpunk*. Dilengkapi pula dengan dukungan layar sentuh interaktif untuk berpindah antarmuka dan mengganti akun Google aktif secara instan tanpa membuka GUI desktop.
 
 ---
 
@@ -12,46 +12,46 @@ Proyek ini menampilkan telemetri beban kerja CPU, temperatur inti (CPU/GPU), pen
 | :--- | :--- | :--- |
 | **Microcontroller** | ESP32-S3-WROOM-1-N16R8 | Dual-Core Xtensa LX7 @ 240 MHz, 16MB Flash, 8MB Octal PSRAM |
 | **Display Panel** | Waveshare 4.3" TFT LCD (800×480) | 16-bit Parallel RGB (5-6-5), PCLK 16 MHz, ST7262 Driver IC |
-| **I/O Expander** | CH422G (I2C Bus) | Mengontrol Backlight LCD, Reset LCD, dan Reset Touchscreen |
-| **Touchscreen** | Goodix GT911 (I2C Bus) | Kapasitif multitouch (tersedia driver, di-bypass saat mode HUD) |
+| **I/O Expander** | CH422G (I2C Bus `0x24`) | Mengontrol Backlight LCD, Reset LCD, dan Reset Touchscreen |
+| **Touchscreen** | Goodix GT911 (I2C Bus `0x5D` / `0x14`) | Multitouch kapasitif interaktif untuk navigasi kartu dan switch akun |
 | **GUI Framework** | LVGL v8.3.11 | Render grafis berbasis widget arc, bar, label, dan palet warna kustom |
-| **JSON Parser** | ArduinoJson v7.4.3 | Zero-allocation deserialization untuk parsing metrik tanpa alokasi heap |
+| **JSON Parser** | ArduinoJson v7.4.3 | Zero-allocation deserialization untuk parsing telemetri tanpa heap bloat |
 | **Firmware Framework**| Arduino Core ESP32 (v2.0.17 / ESP-IDF 4.4 backend) | Manajemen clock, FreeRTOS multitask, dan antarmuka USB Serial/JTAG |
-| **Build System** | PlatformIO Core | Toolchain otomasi build, manajemen dependensi, dan flashing firmware |
-| **Host Bridge** | Python 3 (pyserial, psutil) | Daemon latar belakang macOS pengumpul metrik sistem via sysctl & ioreg |
+| **Build System** | PlatformIO Core | Toolchain otomasi build, partisi custom 16MB, dan flashing firmware |
+| **Host Bridge** | Python 3 via PM2 (`esp32hud`) | Daemon pengumpul metrik macOS via `psutil`, `powermetrics`, `sysctl`, & Google API |
 
 ---
 
-## 2. Struktur Direktori & Penjelasan Kode
+## 2. Struktur Direktori & Arsitektur Modul
 
 ```text
 Esp32HudMonitorPC/
-├── platformio.ini                  # Konfigurasi board, OPI PSRAM, QIO Flash 80MHz, -O2
+├── platformio.ini                  # Konfigurasi board, OPI PSRAM, QIO Flash 80MHz, optimasi -O2
 ├── default_16MB.csv                # Skema partisi Flash 16MB (App 6.25MB, SPIFFS 9.6MB)
-├── requirements.txt                # Dependensi pustaka Python host (pyserial, psutil)
+├── requirements.txt                # Dependensi pustaka Python host (pyserial, psutil, cryptography)
 ├── .gitignore                      # Filter berkas artefak build (.pio, .venv, pycache)
-├── README.md                       # Dokumentasi utama proyek
+├── README.md                       # Dokumentasi utama & catatan pembelajaran teknis
 ├── docs/
-│   ├── ESP32S3_RGB_TEARING_POSTMORTEM.md       # Dokumentasi mendalam analisis error glitch/tearing
+│   ├── ESP32S3_RGB_TEARING_POSTMORTEM.md          # Analisis mendalam eliminasi glitch/tearing ST7262
 │   └── ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md # Arsitektur autentikasi & switch akun AGY via HUD
 ├── include/
 │   ├── board_config.h              # Definisi pinout ST7262 RGB, I2C CH422G, dan GT911
 │   └── lv_conf.h                   # Konfigurasi engine grafis LVGL & custom font montserrat
 ├── src/
-│   ├── main.cpp                    # Entry point firmware, loop LVGL, dan parser serial
+│   ├── main.cpp                    # Entry point firmware, loop LVGL, dan parser serial CDC
 │   ├── hardware/
 │   │   ├── ch422g.h / .cpp         # Driver kontroler CH422G IO expander via I2C
-│   │   └── display.h / .cpp        # Inisialisasi panel RGB ST7262 & double buffer LVGL
+│   │   └── display.h / .cpp        # Inisialisasi panel RGB ST7262 & SRAM double buffer LVGL
 │   ├── ui/
 │   │   ├── ui_mac_monitor.h / .cpp # Dashboard Mac Monitor Cyberpunk & Screen Coordinator
-│   │   ├── ui_screen_agy_cockpit.h / .cpp # Modul UI Layar Pool Akun AGY & Switch Event (SRP)
-│   │   ├── ui_theme.h              # Token warna dan shared component helper
+│   │   ├── ui_screen_agy_cockpit.h / .cpp # Layar Pool Akun AGY & Switch Event Handler (SRP)
+│   │   ├── ui_theme.h              # Token warna cyberpunk dan helper UI bersama
 │   │   └── ui_avatar.h / .cpp      # Template UI avatar robotik pendamping terminal
 │   └── network/
 │       └── wifi_manager.h / .cpp   # Modul opsional komunikasi nirkabel (Wi-Fi/WebSockets)
 └── tools/
-    ├── mac_monitor_bridge.py       # Daemon pengumpul metrik, enkripsi/keychain injector & serial
-    └── agy_bridge.py               # Daemon alternatif untuk integrasi Antigravity CLI
+    ├── mac_monitor_bridge.py       # Daemon pengumpul telemetri, background quota refresher, & serial bridge
+    └── agy_bridge.py               # Daemon alternatif integrasi voice recognition Antigravity CLI
 ```
 
 ### Rincian Peran Tiap Berkas Kunci
@@ -82,110 +82,195 @@ Esp32HudMonitorPC/
 
 ---
 
-## 3. Spesifikasi Protokol Komunikasi Serial
+## 3. Fitur Utama & Navigasi Layar Sentuh (Touch Interactions)
 
-Komunikasi berjalan dua arah melalui antarmuka USB Serial CDC bawaan ESP32-S3 pada baudrate `115200`.
+Layar Waveshare 4.3" mendukung gesture sentuh (*tap*) pada kartu-kartu dashboard untuk membuka detail telemetri:
 
-### Format Paket Data dari Mac ke ESP32 (JSON Newline-Delimited)
+```mermaid
+graph TD
+    Dash["Layar 1: Dashboard Utama<br>(CPU, RAM, Disks, SOC Temp, Net, AGY Meter)"]
+    
+    Dash -- "Tap Kartu CPU" --> ScrProc["Layar 2: Top CPU Processes<br>(Top 6 Proses CPU & RAM)"]
+    Dash -- "Tap Kartu Storage" --> ScrDisk["Layar 3: Storage Multi-Drive<br>(Macintosh HD & SSD Eksternal)"]
+    Dash -- "Tap Kartu SOC / Net" --> ScrNet["Layar 4: Network Monitor<br>(Lalu Lintas RX/TX & Socket Aktif)"]
+    Dash -- "Tap Header Jam / Mac Lock" --> ScrSS["Layar 5: Standby Clock Screensaver<br>(Jam Besar, Tanggal, Cuaca, Reminder, Kuota AGY)"]
+    Dash -- "Tap Kartu AGY Active" --> ScrAGY["Layar 6: Pool Akun Antigravity<br>(Daftar Akun Terurut Kuota Gemini & Switch)"]
+
+    ScrProc -- "Tap Header / Back" --> Dash
+    ScrDisk -- "Tap Header / Back" --> Dash
+    ScrNet -- "Tap Header / Back" --> Dash
+    ScrSS -- "Tap Layar / Mac Unlock" --> Dash
+    ScrAGY -- "Tap Header / Back" --> Dash
+```
+
+### Rincian Antarmuka:
+1. **Layar 1 (Dashboard Utama)**:
+   - **Header Atas**: Nama Chip SoC (Apple M4), Jam digital, IP Lokal (`en1`), dan Uptime.
+   - **3 Kartu Atas**: CPU Gauge Arc, RAM Usage Arc, dan Dual Storage Bar.
+   - **Kartu Bawah Kiri**: Sensor Suhu SoC (CPU & GPU) berdampingan dengan ringkasan bandwidth jaringan (KB/s atau MB/s).
+   - **Kartu Bawah Kanan (AGY Active Meter)**: Indikator akun AI aktif dengan 2 Circular Arc Meter (Gemini 5h di kiri, Claude/GPT 5h di kanan, lengkap dengan persentase mingguan di bawahnya).
+2. **Layar 2 (Top Processes)**: Menampilkan 6 proses konsumsi CPU tertinggi beserta PID dan persentase RAM.
+3. **Layar 3 (Storage Multi-Drive)**: Memantau status partisi internal (`Macintosh HD`) dan drive eksternal (`MAC_EXTERNAL_SSD` / SD Card) secara terpisah.
+4. **Layar 4 (Network Monitor)**: Grafik tingkat transfer RX/TX, total sesi terunduh/terunggah, dan daftar soket koneksi aplikasi aktif.
+5. **Layar 5 (Screensaver Standby - Apple Watch Style)**: Jam digital besar dengan status cuaca, carousel Apple Reminders harian, dan bar sisa kuota AGY aktif.
+6. **Layar 6 (Pool Akun Antigravity Cockpit)**: Menampilkan daftar seluruh akun Google Cockpit terurut berdasarkan kuota Gemini terbanyak. Pengguna dapat langsung **menekan baris akun untuk melakukan switch akun secara headless**.
+
+---
+
+## 4. Temuan Penting & Catatan Teknis (Knowledge Base)
+
+Bagian ini merangkum temuan dan solusi dari berbagai kendala operasional untuk menjadi referensi bagi pengembang dan AI agent berikutnya:
+
+### A. Auto-Refresh Kuota AGY Tanpa GUI Desktop (Headless 60s Worker)
+- **Problem**: Angka kuota akun AI sebelumnya hanya diperbarui saat pengguna membuka aplikasi GUI Cockpit Tools dan menekan refresh.
+- **Solution**: Daemon `tools/mac_monitor_bridge.py` kini menjalankan background thread asinkron setiap **60 detik**:
+  1. Mendekripsi token akun dari storage `~/.antigravity_cockpit/accounts/<id>.json` menggunakan master key `secure-account-storage.key` (AES-256-GCM).
+  2. Jika token mendekati kedaluwarsa (`< 300 detik`), worker otomatis memanggil endpoint OAuth Google untuk memperbarui `access_token` via `refresh_token`, lalu mengenkripsi dan menyimpannya kembali ke file akun.
+  3. Memanggil API internal `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary` dengan payload `{}`.
+  4. Hasil sisa kuota langsung ditulis ke file cache resmi Cockpit (`~/.antigravity_cockpit/cache/quota_api_v1_desktop/authorized/<sha256(email)>.json`).
+- **Security Guardrail**: Agar tidak memicu pencegahan commit GitHub Push Protection, kredensial Google OAuth Client ID & Secret diekstrak secara dinamis saat runtime dari binary lokal Cockpit Tools (`strings "/Applications/Cockpit Tools.app/Contents/MacOS/cockpit-tools"`), sehingga tidak ada kredensial sensitif yang tersimpan secara statis di repository.
+
+### B. Stabilisasi Transisi Screensaver Standby (Anti-Flicker Hysteresis)
+- **Problem**: Layar jam screensaver sempat mengalami kedap-kedip (berganti-ganti layar sendiri) saat Mac dalam keadaan idle tetapi layar masih menyala.
+- **Root Cause**: Sebelumnya kode menggunakan kondisi `m.gpu_temp <= 0.0f` sebagai sinyal tidur monitor. Pada SoC Apple Silicon M4, saat idle beban grafis sangat rendah sehingga pembacaan sensor sesekali mengembalikan nilai 0.
+- **Solution**:
+  1. Pemicu transisi dikunci **hanya** pada parameter murni `m.display_off` (yang dideteksi di host Mac melalui CoreGraphics API `CGDisplayIsAsleep` dan dictionary `CGSessionCopyCurrentDictionary`).
+  2. Menambahkan filter histeresis 2 siklus pembacaan (`ss_counter >= 2`) di firmware ESP32 untuk mencegah *false positive* sesaat.
+
+### C. Mekanisme Switch Akun Antigravity Headless
+- **Problem**: Memanggil WebSocket Cockpit Tools tidak berpengaruh pada Antigravity Standalone karena aplikasi membaca kredensial langsung dari **macOS Keychain**.
+- **Solution**: Prosedur 5 tahap terintegrasi yang dijalankan langsung oleh bridge saat menerima sinyal serial `CMD:SWITCH_AGY:<id>`:
+  1. Update metadata akun aktif di `accounts.json` & `antigravity_legacy_instances.json`.
+  2. Dekripsi token envelope akun terpilih (AES-256-GCM).
+  3. Injeksi token ke macOS Keychain (`security add-generic-password -U -s gemini -a antigravity ...`) dengan format base64 Go-Keyring, serta perbarui token cache `jetski-standalone-oauth-token`.
+  4. Update Protobuf `userStatus` di SQLite database `state.vscdb`.
+  5. Kirim perintah term/relaunch proses Antigravity secara bersih.
+  *(Detail lengkap di [`docs/ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md`](docs/ANTIGRAVITY_ACCOUNT_SWITCH_ARCHITECTURE.md))*
+
+### D. Solusi Port Locking saat Flashing Serial Firmware
+- **Problem**: Perintah `pio run -t upload` sering gagal dengan pesan `Resource busy` atau `could not open port /dev/cu.usbmodem*`.
+- **Root Cause**: Port serial CDC sedang dibuka dan di-lock secara eksklusif oleh proses daemon PM2 `esp32hud` (`mac_monitor_bridge.py`).
+- **SOP Flashing Firmware**:
+  ```bash
+  # 1. Matikan daemon bridge untuk melepas lock port serial
+  pm2 stop esp32hud
+
+  # 2. Lakukan kompilasi dan upload firmware
+  pio run -t upload
+
+  # 3. Nyalakan kembali daemon bridge setelah upload sukses
+  pm2 start esp32hud
+  ```
+
+### E. Pencegahan Glitch / Tearing Layar Parallel RGB
+- **Problem**: Glitch garis horizontal pada layar ST7262 saat data serial tiba.
+- **Root Cause**: DMA FIFO starvation pada kontroler RGB akibat perebutan bus PSRAM internal saat buffer serial dibaca bersamaan.
+- **Solution**: Alokasi double buffer LVGL langsung di **internal SRAM** (`MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA`), penempatan fungsi flush di **IRAM** (`IRAM_ATTR`), serta penerapan *differential rendering* pada LVGL widget.
+  *(Detail lengkap di [`docs/ESP32S3_RGB_TEARING_POSTMORTEM.md`](docs/ESP32S3_RGB_TEARING_POSTMORTEM.md))*
+
+---
+
+## 5. Protokol Komunikasi Serial Dua Arah
+
+Komunikasi antara Mac dan ESP32-S3 berjalan melalui USB Serial CDC pada baudrate `115200`.
+
+### A. Mac ke ESP32 (Telemetri JSON Berkala Setiap 1 Detik)
+Format data baris JSON (diakhiri `\n`):
 ```json
 {
-  "cpu": 34.5,
-  "cpu_temp": 68.2,
-  "gpu_temp": 65.4,
-  "ram_pct": 79.1,
-  "ram_used": 12.6,
+  "cpu": 24.5,
+  "cpu_temp": 64.2,
+  "gpu_temp": 61.0,
+  "ram_pct": 71.4,
+  "ram_used": 11.4,
   "ram_total": 16.0,
   "disk_pct": 58.4,
   "disk_free": 185.3,
-  "net_up": 142.8,
   "net_down": 1250.4,
+  "net_up": 142.8,
+  "rx_gb": 14.52,
+  "tx_gb": 3.12,
+  "iface": "en1",
+  "ip": "192.168.1.15",
   "chip": "Apple M4",
-  "media": "Spotify",
-  "uptime": "2d 23h 30m"
+  "uptime": "15h 12m",
+  "time": "15:05",
+  "date": "Sabtu, 12 September 2026",
+  "day_idx": 5,
+  "disp_off": 0,
+  "rem": "Meeting Evaluasi • Beli Kebutuhan Toko",
+  "w_temp": 31.0,
+  "w_code": 1,
+  "w_day": 1,
+  "w_text": "Cerah Berawan",
+  "w_loc": "Bekasi",
+  "procs": [{"n": "Google Chrome", "p": 1245, "c": 14.2, "m": 8.1}],
+  "conns": [{"n": "node", "p": 5421, "r": "142.250.185.206:443", "s": "ESTAB"}],
+  "disks": [
+    {"name": "Macintosh HD", "pct": 58.4, "used": 260.1, "free": 185.3, "total": 445.4, "type": "INTERNAL"},
+    {"name": "MAC_EXTERNAL_SSD", "pct": 42.1, "used": 405.0, "free": 550.2, "total": 955.2, "type": "EXTERNAL"}
+  ],
+  "agy": {
+    "acc": "coklattembok5",
+    "c_5h": 92, "c_wk": 88,
+    "g_5h": 98, "g_wk": 95,
+    "ready": 7, "total": 7,
+    "list": [
+      {"id": "uuid-1", "n": "coklattembok5", "cur": 1, "c_5h": 92, "c_wk": 88, "g_5h": 98, "g_wk": 95}
+    ]
+  }
 }
 ```
 
-### Format Balasan dari ESP32 ke Mac (Handshake)
-Setelah paket JSON tervalidasi dan metrik diekstraksi ke buffer internal, ESP32 membalas:
-```text
-ACK:OK\n
-```
+### B. ESP32 ke Mac (Handshake & Perintah Interaktif Touch)
+- **Handshake Telemetri Sukses**:
+  ```text
+  ACK:OK\n
+  ```
+- **Perintah Ganti Akun AI dari Layar Sentuh**:
+  ```text
+  CMD:SWITCH_AGY:<account_uuid>\n
+  ```
 
 ---
 
-## 4. Panduan Instalasi & Penggunaan
+## 6. Panduan Instalasi & Menjalankan Sistem
 
-### Prasyarat Perangkat Keras
+### A. Persiapan Perangkat Keras
 1. Board **Waveshare ESP32-S3-Touch-LCD-4.3"**.
-2. Kabel data USB Type-C (pastikan kabel mendukung jalur data, bukan hanya pengisian daya/charging).
-3. Komputer Mac yang terhubung ke port USB ESP32.
+2. Kabel USB Type-C High-Speed Data terhubung ke port Mac.
 
----
-
-### Langkah 1: Flash Firmware ke ESP32-S3
-
-1. Hubungkan board ke port USB Mac. Cek port serial yang terdeteksi:
-   ```bash
-   ls /dev/cu.usbmodem*
-   ```
-   *(Contoh output: `/dev/cu.usbmodem21201`)*
-
-2. Buka direktori proyek dan kompilasi serta flash firmware menggunakan PlatformIO:
-   ```bash
-   cd /Users/echoaxis/Projects/Esp32/Esp32HudMonitorPC
-   
-   # Menggunakan virtualenv bawaan proyek
-   .venv/bin/pio run -t upload --upload-port /dev/cu.usbmodem21201
-   ```
-   *(Jika menggunakan PlatformIO global, cukup jalankan `pio run -t upload`)*
-
----
-
-### Langkah 2: Persiapan Lingkungan Host Python di Mac
-
-1. Aktifkan virtual environment atau gunakan binary virtualenv:
-   ```bash
-   cd /Users/echoaxis/Projects/Esp32/Esp32HudMonitorPC
-   source .venv/bin/activate
-   ```
-
-2. Pasang pustaka dependensi Python:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
----
-
-### Langkah 3: Menjalankan Host Bridge Daemon
-
-Jalankan skrip daemon pemantau metrik:
+### B. Flash Firmware ke ESP32
 ```bash
-python3 tools/mac_monitor_bridge.py
+cd /Users/echoaxis/Projects/Esp32/Esp32HudMonitorPC
+
+# 1. Hentikan bridge jika sedang berjalan
+pm2 stop esp32hud
+
+# 2. Flash firmware via PlatformIO
+pio run -t upload
+
+# 3. Jalankan kembali service telemetri
+pm2 start esp32hud
 ```
 
-Output terminal saat terhubung normal:
-```text
-[INIT] Host SoC: Apple M4
-[CONNECTED] ESP32 terdeteksi di: /dev/cu.usbmodem21201
-[STREAM] CPU: 28.5% | Temp: 67.7C | RAM: 79.1% | Uptime: 2d 23h 30m | ACK: ACK:OK
-[STREAM] CPU: 25.3% | Temp: 64.5C | RAM: 79.1% | Uptime: 2d 23h 30m | ACK: ACK:OK
+### C. Manajemen Daemon Host di Mac (PM2)
+Bridge Python dikelola secara otomatis menggunakan PM2 agar berjalan di background saat Mac menyala:
+```bash
+# Cek status runtime daemon
+pm2 status esp32hud
+
+# Melihat log transmisi dan handshake secara real-time
+pm2 logs esp32hud --lines 30
+
+# Restart daemon manual
+pm2 restart esp32hud
 ```
-Layar LCD akan langsung menampilkan dashboard aktif dengan pergerakan gauge dan angka yang diperbarui setiap detik.
 
 ---
 
-## 5. Dokumentasi Masalah Glitch / Tearing & Resolusi Arsitektur
+## 7. Lisensi & Kredit
 
-Saat tahap awal pengembangan, layar mengalami glitch visual horizontal (layar robek / berkedip) setiap 1 detik tepat ketika data serial tiba.
-
-Dokumentasi lengkap mengenai investigasi arsitektur hardware bus ESP32-S3, analisis starvation pada GDMA FIFO, pengujian eksperimen yang gagal, hingga implementasi 4 langkah perbaikan permanen telah dirangkum dalam dokumen teknis terpisah:
-
-👉 **[Baca Dokumentasi Lengkap Analisis Glitch & Tearing (docs/ESP32S3_RGB_TEARING_POSTMORTEM.md)](docs/ESP32S3_RGB_TEARING_POSTMORTEM.md)**
-
----
-
-## 6. Lisensi & Kredit
-
-- **Board Driver**: [Waveshare ESP32-S3-Touch-LCD-4.3 Wiki](https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-4.3)
-- **GUI Engine**: [LVGL - Light and Versatile Graphics Library](https://lvgl.io/)
-- **Author**: echoaxis
+- **Hardware Manufacturer**: [Waveshare ESP32-S3-Touch-LCD-4.3 Wiki](https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-4.3)
+- **GUI Engine**: [LVGL v8.3.11](https://lvgl.io/)
+- **Author / Developer**: echoaxis
