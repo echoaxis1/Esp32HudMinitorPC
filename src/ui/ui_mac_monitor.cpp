@@ -239,26 +239,26 @@ void UIMacMonitor::create(lv_obj_t *parent) {
     lv_obj_t *title_cpu = lv_label_create(card_cpu);
     lv_label_set_text(title_cpu, "CPU UTILIZATION");
     lv_obj_set_style_text_color(title_cpu, COLOR_TEXT_MUTED, 0);
-    lv_obj_set_style_text_font(title_cpu, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(title_cpu, &lv_font_montserrat_12, 0);
     lv_obj_align(title_cpu, LV_ALIGN_TOP_LEFT, 0, 0);
 
     lbl_cpu_val = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_val, "0.0%");
     lv_obj_set_style_text_color(lbl_cpu_val, COLOR_ACCENT_CYAN, 0);
-    lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_16, 0);
-    lv_obj_align(lbl_cpu_val, LV_ALIGN_TOP_RIGHT, -45, 0);
+    lv_obj_set_style_text_font(lbl_cpu_val, &lv_font_montserrat_14, 0);
+    lv_obj_align(lbl_cpu_val, LV_ALIGN_TOP_RIGHT, 0, 0);
 
     lbl_cpu_temp = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_temp, "-- C");
     lv_obj_set_style_text_color(lbl_cpu_temp, COLOR_ACCENT_CORAL, 0);
     lv_obj_set_style_text_font(lbl_cpu_temp, &lv_font_montserrat_12, 0);
-    lv_obj_set_pos(lbl_cpu_temp, 0, 22);
+    lv_obj_set_pos(lbl_cpu_temp, 0, 20);
 
     lv_obj_t *lbl_cpu_arch = lv_label_create(card_cpu);
     lv_label_set_text(lbl_cpu_arch, "4P + 6E CORES");
     lv_obj_set_style_text_color(lbl_cpu_arch, COLOR_TEXT_MUTED, 0);
     lv_obj_set_style_text_font(lbl_cpu_arch, &lv_font_montserrat_12, 0);
-    lv_obj_align(lbl_cpu_arch, LV_ALIGN_TOP_RIGHT, 0, 22);
+    lv_obj_align(lbl_cpu_arch, LV_ALIGN_TOP_RIGHT, 0, 20);
 
     // 10-CORE DEDICATED GRAPHIC BAR EQUALIZER (Full Card Width)
     // Area: x = 0..219, y = 44..160 (height = 116)
